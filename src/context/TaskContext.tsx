@@ -12,6 +12,7 @@ interface TaskContextType {
   updateTask: (task: TaskNode) => Promise<void>;
   updateTaskStatus: (taskId: string, status: TaskStatus) => Promise<void>;
   logTime: (taskId: string, durationMinutes: number, note?: string) => Promise<void>;
+  updateSessionNote: (taskId: string, sessionId: string, note: string) => Promise<void>;
   deleteTask: (taskId: string) => Promise<void>;
   reparentTask: (taskId: string, newParentId: string | null) => Promise<void>;
   activeTimer: ActiveTimerState | null;
@@ -133,6 +134,22 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await storageAdapter.saveTasks(updated);
   }, [tasks]);
 
+  const updateSessionNote = useCallback(async (taskId: string, sessionId: string, note: string) => {
+    const updated = tasks.map(t => {
+      if (t.id === taskId) {
+        return {
+          ...t,
+          sessionHistory: (t.sessionHistory || []).map(s => (s.id === sessionId ? { ...s, note: note.trim() || undefined } : s)),
+          updatedAt: new Date().toISOString()
+        };
+      }
+      return t;
+    });
+
+    setTasks(updated);
+    await storageAdapter.saveTasks(updated);
+  }, [tasks]);
+
   const reparentTask = useCallback(async (taskId: string, newParentId: string | null) => {
     // Check for self or circular dependency
     if (taskId === newParentId) {
@@ -194,6 +211,7 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updateTask,
         updateTaskStatus,
         logTime,
+        updateSessionNote,
         deleteTask,
         reparentTask,
         activeTimer,

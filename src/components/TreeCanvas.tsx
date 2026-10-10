@@ -106,8 +106,8 @@ export const TreeCanvas: React.FC = () => {
       cameraController.endDrag();
       (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
 
-      // If user merely clicked without dragging, perform hit test
-      if (dragDistanceRef.current < 6 && rendererRef.current) {
+      // If user clicked without significant dragging, perform hit test
+      if (dragDistanceRef.current < 15 && rendererRef.current) {
         const worldPos = cameraController.screenToWorld(e.clientX, e.clientY);
         const clickedTaskId = rendererRef.current.hitTest(worldPos.x, worldPos.y);
         setSelectedTaskId(clickedTaskId);

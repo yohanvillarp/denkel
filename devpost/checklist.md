@@ -19,7 +19,7 @@ Build mode: learn
   Learner check: Open the app in your browser, drag the canvas to pan, scroll to zoom, type a task (e.g., "Draft thesis methodology"), press Enter, and see the branch sprout smoothly on the seedling.
   Commit: `Scaffold app and render living tree canvas with pan zoom and task sprouting`
 
-- [ ] **2. Log effort to watch branches visibly grow and mature**
+- [x] **2. Log effort to watch branches visibly grow and mature**
   Becomes usable: Selecting any branch slides open the task details drawer where you can view effort breakdown, start a fullscreen distraction-free focus timer with live circular sweep, or log hours manually. Accumulating time visibly thickens the branch on canvas and evolves it from bud to growing branch. Active timer state survives page refresh.
   Why now: Delivers the unique kernel immediately—making effort tangible and rewarding through organic branch growth rather than letting completed tasks disappear into a void.
   PRD ref: `prd.md > The Core Journey` (steps 5–8), `prd.md > Task Details Drawer`, `prd.md > Distraction-Free Focus Mode`
@@ -61,7 +61,7 @@ Build mode: learn
 
 ## Hands-on Checkpoints
 
-- [ ] Early usable behavior explored — Slice 2 (living tree with effort logging and branch growth)
+- [x] Early usable behavior explored — Slice 2 (living tree with effort logging and branch growth)
 - [ ] Final kick-the-tires exploration and feedback completed
 
 ## Final Review

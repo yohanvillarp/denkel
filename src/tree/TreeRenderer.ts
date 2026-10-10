@@ -654,11 +654,49 @@ export class TreeRenderer {
   public hitTest(worldX: number, worldY: number): string | null {
     const nodeArray = Array.from(this.nodes.values()).reverse();
     for (const node of nodeArray) {
+      // 1. Direct bud / joint circle hit test
       const dx = worldX - node.currentX;
       const dy = worldY - node.currentY;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      // Generous hit test radius for comfortable clicking
-      if (dist <= 20) {
+      if (dist <= 24) {
+        return node.id;
+      }
+
+      // 2. Pill label tag bounds hit test
+      const hoursText = node.totalMinutes > 0
+        ? node.totalMinutes >= 60
+          ? `${(node.totalMinutes / 60).toFixed(1)}h`
+          : `${node.totalMinutes}m`
+        : null;
+
+      const approxTextWidth = node.title.length * 8.5;
+      const totalPillWidth = Math.max(70, approxTextWidth + (hoursText ? 45 : 22));
+      const pillHeight = 24;
+
+      let pillX = 0;
+      let pillY = -26;
+
+      if (node.labelPlacement === 'bottom') {
+        pillY = 14;
+        pillX = -totalPillWidth / 2;
+      } else if (node.labelPlacement === 'left') {
+        pillX = -totalPillWidth - 10;
+        pillY = -pillHeight / 2;
+      } else if (node.labelPlacement === 'right') {
+        pillX = 10;
+        pillY = -pillHeight / 2;
+      } else {
+        pillX = -totalPillWidth / 2;
+        pillY = -28;
+      }
+
+      // Check if click was inside label pill
+      if (
+        dx >= pillX &&
+        dx <= pillX + totalPillWidth &&
+        dy >= pillY &&
+        dy <= pillY + pillHeight
+      ) {
         return node.id;
       }
     }
