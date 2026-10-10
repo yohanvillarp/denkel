@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Denkel — Technical Specification Companion</title>
+  <style>
+    :root {
+      --bg: #fcfbf9;
+      --card-bg: #ffffff;
+      --card-border: rgba(45, 106, 79, 0.15);
+      --card-hover: rgba(45, 106, 79, 0.28);
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --forest-dark: #1b4332;
+      --forest-mid: #2d6a4f;
+      --foliage-green: #40916c;
+      --leaf-emerald: #52b788;
+      --emerald-subtle: rgba(82, 183, 136, 0.12);
+      --amber-accent: #d97706;
+      --amber-subtle: rgba(217, 119, 6, 0.1);
+      --blue-accent: #0284c7;
+      --blue-subtle: rgba(2, 132, 199, 0.1);
+      --font: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --code-font: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      background-image: 
+        radial-gradient(circle at 10% 15%, rgba(82, 183, 136, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 90% 85%, rgba(45, 106, 79, 0.05) 0%, transparent 45%);
+      color: var(--text);
+      font-family: var(--font);
+      line-height: 1.6;
+      padding: 2.5rem 1.5rem;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1040px;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 2.25rem;
+      border-bottom: 1px solid rgba(45, 106, 79, 0.12);
+      padding-bottom: 1.5rem;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+
+    .title-group h1 {
+      font-size: 2.25rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: var(--forest-dark);
+      margin-bottom: 0.25rem;
+    }
+
+    .title-group p {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      max-width: 720px;
+    }
+
+    .badges {
+      display: flex;
+      gap: 0.6rem;
+      align-items: center;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.85rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .badge-status {
+      background: var(--amber-subtle);
+      border: 1px solid rgba(217, 119, 6, 0.3);
+      color: var(--amber-accent);
+    }
+
+    .badge-doc {
+      background: var(--blue-subtle);
+      border: 1px solid rgba(2, 132, 199, 0.3);
+      color: var(--blue-accent);
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 1rem;
+      padding: 1.75rem;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+      margin-bottom: 1.75rem;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .card:hover {
+      border-color: var(--card-hover);
+      box-shadow: 0 6px 24px rgba(45, 106, 79, 0.08);
+    }
+
+    .card-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      color: var(--forest-dark);
+      margin-bottom: 1rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+      margin-bottom: 1.75rem;
+    }
+
+    @media (min-width: 768px) {
+      .grid-2 {
+        grid-template-columns: 1fr 1fr;
+      }
+      .grid-3 {
+        grid-template-columns: 1fr 1fr 1fr;
+      }
+    }
+
+    /* Architecture Diagram */
+    .diagram-card {
+      overflow-x: auto;
+    }
+
+    svg.arch-diagram {
+      width: 100%;
+      height: auto;
+      min-width: 900px;
+      display: block;
+    }
+
+    /* Tabs */
+    .nav-tabs {
+      display: flex;
+      gap: 0.5rem;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+      padding-bottom: 0.5rem;
+      margin-bottom: 1.25rem;
+      overflow-x: auto;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.95rem;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .tab-btn:hover {
+      color: var(--forest-dark);
+      background: rgba(45, 106, 79, 0.05);
+    }
+
+    .tab-btn.active {
+      color: var(--forest-dark);
+      background: var(--emerald-subtle);
+      font-weight: 700;
+    }
+
+    .tab-view {
+      display: none;
+      animation: fadeIn 0.2s ease-in-out;
+    }
+
+    .tab-view.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Code & Trees */
+    pre.code-block {
+      background: #18221c;
+      color: #e2e8f0;
+      padding: 1.25rem;
+      border-radius: 0.75rem;
+      font-family: var(--code-font);
+      font-size: 0.85rem;
+      overflow-x: auto;
+      line-height: 1.5;
+    }
+
+    .matrix-box {
+      background: #faf9f6;
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .matrix-box strong {
+      color: var(--forest-dark);
+      display: block;
+      margin-bottom: 0.25rem;
+    }
+
+    ul.clean-list {
+      list-style: none;
+    }
+
+    ul.clean-list li {
+      position: relative;
+      padding-left: 1.5rem;
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+      color: #334155;
+    }
+
+    ul.clean-list li::before {
+      content: "•";
+      position: absolute;
+      left: 0.35rem;
+      color: var(--foliage-green);
+      font-size: 1.2rem;
+      line-height: 1;
+    }
+
+    .canonical-note {
+      text-align: center;
+      margin-top: 3rem;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    .canonical-note code {
+      background: rgba(0, 0, 0, 0.05);
+      padding: 0.2rem 0.4rem;
+      border-radius: 0.3rem;
+      color: var(--forest-mid);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <header>
+      <div class="title-group">
+        <h1>Denkel</h1>
+        <p>Technical Specification (Spec) — Blueprinting the React + Canvas 2D engine, local secure AI proxy, and storage repository.</p>
+      </div>
+      <div class="badges">
+        <span class="badge badge-doc">spec</span>
+        <span class="badge badge-status" style="background: var(--emerald-subtle); border-color: rgba(45, 106, 79, 0.3); color: var(--forest-mid);">status: approved</span>
+      </div>
+    </header>
+
+    <!-- System Architecture Diagram -->
+    <div class="card diagram-card">
+      <div class="card-title">
+        <span>⚙️</span> Complete System Architecture & Data Flow
+      </div>
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.25rem;">
+        Secure local proxy pipeline, off-screen D3 coordinate solver, Canvas 2D organic renderer, and storage abstraction:
+      </p>
+
+      <svg class="arch-diagram" viewBox="0 0 960 260" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Module 1: Natural Input & Secure Local Proxy -->
+        <rect x="15" y="45" width="245" height="175" rx="12" fill="#faf9f6" stroke="#0284c7" stroke-width="1.5"/>
+        <text x="137" y="72" text-anchor="middle" fill="#0369a1" font-weight="700" font-size="13">Secure AI Proxy Pipeline</text>
+        
+        <rect x="30" y="88" width="215" height="32" rx="6" fill="#ffffff" stroke="#cbd5e1"/>
+        <text x="137" y="109" text-anchor="middle" fill="#334155" font-size="11">TaskInputBar (React UI)</text>
+
+        <rect x="30" y="126" width="215" height="38" rx="6" fill="#f0f9ff" stroke="#0284c7"/>
+        <text x="137" y="144" text-anchor="middle" fill="#0369a1" font-weight="600" font-size="11">server/api.ts (Local Proxy)</text>
+        <text x="137" y="157" text-anchor="middle" fill="#64748b" font-size="9">GEMINI_API_KEY in .env → Gemini 3.5 Flash-Lite</text>
+
+        <rect x="30" y="170" width="215" height="34" rx="6" fill="#ffffff" stroke="#10b981"/>
+        <text x="137" y="192" text-anchor="middle" fill="#047857" font-weight="600" font-size="11">TreeIntegrityGuard (Validation)</text>
+
+        <!-- Arrow: AI to State -->
+        <path d="M260 132 H285" stroke="#0284c7" stroke-width="2"/>
+
+        <!-- Module 2: Central State & Storage -->
+        <rect x="295" y="45" width="190" height="175" rx="12" fill="#faf9f6" stroke="#2d6a4f" stroke-width="1.5"/>
+        <text x="390" y="72" text-anchor="middle" fill="#1b4332" font-weight="700" font-size="13">State & Storage</text>
+
+        <rect x="305" y="88" width="170" height="42" rx="6" fill="#ffffff" stroke="#cbd5e1"/>
+        <text x="390" y="108" text-anchor="middle" fill="#1b4332" font-weight="600" font-size="11">TaskContext</text>
+        <text x="390" y="122" text-anchor="middle" fill="#64748b" font-size="10">Global Domain State</text>
+
+        <rect x="305" y="145" width="170" height="58" rx="6" fill="#ffffff" stroke="#cbd5e1"/>
+        <text x="390" y="165" text-anchor="middle" fill="#334155" font-weight="600" font-size="11">IStorageAdapter</text>
+        <text x="390" y="180" text-anchor="middle" fill="#64748b" font-size="10">LocalStorageAdapter</text>
+        <text x="390" y="194" text-anchor="middle" fill="#10b981" font-size="9">Active Timer Recovery</text>
+
+        <!-- Arrow: State to Layout Engine -->
+        <path d="M485 110 H520" stroke="#2d6a4f" stroke-width="2"/>
+
+        <!-- Module 3: Specialized Visualization Engine -->
+        <rect x="530" y="30" width="415" height="205" rx="12" fill="#f4f8f5" stroke="#15803d" stroke-width="2"/>
+        <text x="737" y="58" text-anchor="middle" fill="#15803d" font-weight="700" font-size="14">Dedicated Tree Engine (Canvas 2D)</text>
+
+        <!-- D3 Layout Engine -->
+        <rect x="545" y="75" width="185" height="65" rx="8" fill="#ffffff" stroke="#2d6a4f"/>
+        <text x="637" y="98" text-anchor="middle" fill="#1b4332" font-weight="600" font-size="11">D3TreeLayoutEngine</text>
+        <text x="637" y="114" text-anchor="middle" fill="#64748b" font-size="10">d3-hierarchy (Tidy Tree)</text>
+        <text x="637" y="128" text-anchor="middle" fill="#047857" font-size="9">Outputs collision-free (x, y)</text>
+
+        <!-- Camera Controller -->
+        <rect x="745" y="75" width="185" height="65" rx="8" fill="#ffffff" stroke="#2d6a4f"/>
+        <text x="837" y="98" text-anchor="middle" fill="#1b4332" font-weight="600" font-size="11">CameraController</text>
+        <text x="837" y="114" text-anchor="middle" fill="#64748b" font-size="10">Pan / Zoom Physics</text>
+        <text x="837" y="128" text-anchor="middle" fill="#047857" font-size="9">Smooth flyTo() easing</text>
+
+        <!-- Tree Renderer -->
+        <rect x="545" y="152" width="385" height="68" rx="8" fill="#18221c" stroke="#10b981"/>
+        <text x="737" y="174" text-anchor="middle" fill="#6ee7b7" font-weight="700" font-size="12">TreeRenderer (Canvas 2D Context)</text>
+        <text x="737" y="192" text-anchor="middle" fill="#e2e8f0" font-size="10">Organic Bézier Curves • Bounded Bark Thickness • Buds & Leaves</text>
+        <text x="737" y="206" text-anchor="middle" fill="#94a3b8" font-size="9">60 FPS Tweening (currentX, currentY → targetX, targetY) • Adaptive LOD</text>
+      </svg>
+    </div>
+
+    <!-- Architecture & Module Explorer Tabs -->
+    <div class="card">
+      <div class="card-title">
+        <span>🧩</span> Architectural Responsibilities & Technical Blueprints
+      </div>
+      <div class="nav-tabs">
+        <button class="tab-btn active" onclick="switchSpecTab('tree')">1. Canvas 2D Engine</button>
+        <button class="tab-btn" onclick="switchSpecTab('ai')">2. AI Proxy & Guardrails</button>
+        <button class="tab-btn" onclick="switchSpecTab('storage')">3. State & Crash Resilience</button>
+        <button class="tab-btn" onclick="switchSpecTab('files')">4. File Structure</button>
+      </div>
+
+      <!-- Tab 1: Tree Engine -->
+      <div class="tab-view active" id="tab-tree">
+        <h4 style="color: var(--forest-dark); margin-bottom: 0.5rem;">Decoupled 3-Part Visualization Architecture</h4>
+        <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 1rem;">
+          Cleanly decoupled responsibilities: layout calculation never touches pixels, and the renderer never calculates topology.
+        </p>
+        <div class="grid grid-3">
+          <div class="matrix-box">
+            <strong>D3TreeLayoutEngine</strong>
+            <p style="font-size: 0.85rem; color: #475569;">
+              Builds a <code>d3.hierarchy</code> and executes <code>d3.tree()</code>. Guarantees zero branch collisions across arbitrary depths. Outputs target coordinates <code>{ targetX, targetY }</code>.
+            </p>
+          </div>
+          <div class="matrix-box">
+            <strong>CameraController</strong>
+            <p style="font-size: 0.85rem; color: #475569;">
+              Handles viewport math: <code>(panX, panY, zoom)</code>. Translates mouse clicks to world coordinates for hit-testing. Smoothly eases camera during search and node focus.
+            </p>
+          </div>
+          <div class="matrix-box">
+            <strong>TreeRenderer</strong>
+            <p style="font-size: 0.85rem; color: #475569;">
+              Draws organic cubic Bézier curves on Canvas 2D. Smoothly morphs nodes from current to target coordinates. Applies bounded bark thickness and LOD label management.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 2: AI & Integrity Guard -->
+      <div class="tab-view" id="tab-ai">
+        <h4 style="color: var(--forest-dark); margin-bottom: 0.5rem;">Secure Local Proxy & Strict Validation Guard</h4>
+        <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 1rem;">
+          API keys remain strictly server-side in <code>.env</code>; client validation ensures zero corrupted graph relationships.
+        </p>
+        <div class="grid grid-2">
+          <div class="matrix-box">
+            <strong>Local Server Proxy (server/api.ts)</strong>
+            <p style="font-size: 0.85rem; color: #475569;">
+              Reads <code>GEMINI_API_KEY</code> securely from local <code>.env</code>. Proxies calls to Gemini Flash-Lite (<code>gemini-3.5-flash-lite</code>) with structured JSON schemas.
+            </p>
+          </div>
+          <div class="matrix-box">
+            <strong>Conservative Fallback</strong>
+            <p style="font-size: 0.85rem; color: #475569;">
+              When offline or lacking an API key, registers tasks as provisional branches directly off the trunk—avoiding crude or inaccurate guesses.
+            </p>
+          </div>
+          <div class="matrix-box">
+            <strong>TreeIntegrityGuard</strong>
+            <p style="font-size: 0.85rem; color: #475569;">
+              Validates proposed tree operations: verifies acyclic graph rules (no cycles), confirms parent IDs exist, and strictly ensures zero data or time loss.
+            </p>
+          </div>
+          <div class="matrix-box">
+            <strong>Provisional Branches</strong>
+            <p style="font-size: 0.85rem; color: #475569;">
+              Unrelated tasks sprout without force-creating single-item parent categories, awaiting future pattern recognition.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 3: Storage & Resilience -->
+      <div class="tab-view" id="tab-storage">
+        <h4 style="color: var(--forest-dark); margin-bottom: 0.5rem;">Data Abstraction & Crash Resilience</h4>
+        <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 1rem;">
+          State sits behind <code>IStorageAdapter</code>, decoupled from browser storage APIs.
+        </p>
+        <ul class="clean-list">
+          <li><strong>Active Session Recovery:</strong> Active timer state (task ID, start timestamp, running/paused status, accumulated duration) is persisted every 5 seconds. Refreshing or reopening the tab restores the session with zero lost time.</li>
+          <li><strong>Effort Breakdown:</strong> Tasks store individual session history logs (e.g., Oct 10: 40m, Oct 11: 60m = 100m total).</li>
+          <li><strong>Zero Double-Counting:</strong> Parent projects clearly distinguish Direct Node Hours from Subtask Contributed Hours.</li>
+          <li><strong>Future Drop-in:</strong> Cloud databases (e.g., PostgreSQL / Neon) can be swapped in without modifying any React or Canvas code.</li>
+        </ul>
+      </div>
+
+      <!-- Tab 4: File Structure -->
+      <div class="tab-view" id="tab-files">
+        <h4 style="color: var(--forest-dark); margin-bottom: 0.5rem;">Annotated Project Tree</h4>
+        <pre class="code-block">
+denkel/
+├── index.html
+├── package.json
+├── vite.config.ts
+├── tailwind.config.js
+├── .env.example               # GEMINI_API_KEY=your_key_here
+├── server/
+│   └── api.ts                 # Local backend proxy for Gemini requests
+├── src/
+│   ├── main.tsx
+│   ├── App.tsx
+│   ├── types/
+│   │   ├── task.ts            # TaskNode, SessionLog, NodeType, TaskStatus
+│   │   └── ai.ts              # AI Provider interfaces & result schemas
+│   ├── services/
+│   │   ├── storage/
+│   │   │   ├── IStorageAdapter.ts
+│   │   │   └── LocalStorageAdapter.ts
+│   │   └── ai/
+│   │       ├── IAIProvider.ts
+│   │       ├── GeminiProvider.ts       # Calls /api/analyze-task proxy
+│   │       ├── LocalFallbackProvider.ts
+│   │       ├── TreeIntegrityGuard.ts
+│   │       └── AIOrchestrator.ts
+│   ├── tree/
+│   │   ├── ITreeLayoutEngine.ts
+│   │   ├── D3TreeLayoutEngine.ts  # d3-hierarchy tidy tree
+│   │   ├── CameraController.ts    # pan/zoom & smooth flight
+│   │   └── TreeRenderer.ts        # Canvas 2D organic painter
+│   ├── components/
+│   │   ├── TreeCanvas.tsx         # Canvas wrapper component
+│   │   ├── Header.tsx             # Denkel logo, search, settings
+│   │   ├── TaskInputBar.tsx       # Bottom natural language bar
+│   │   ├── TaskDrawer.tsx         # Slide-over details & sessions
+│   │   ├── FocusTimer.tsx         # Serene elapsed timer
+│   │   ├── SearchModal.tsx        # Floating search modal
+│   │   └── SettingsModal.tsx      # Provider & API key configuration
+│   └── context/
+│       └── TaskContext.tsx        # Domain state & persistence sync
+└── devpost/                       # Hackathon planning workspace
+        </pre>
+      </div>
+    </div>
+
+    <!-- Data Model & Schema Inspector -->
+    <div class="card">
+      <div class="card-title">
+        <span>📦</span> TypeScript Domain Models
+      </div>
+      <pre class="code-block">
+export type TaskStatus = 'pending' | 'in_progress' | 'completed';
+export type NodeType = 'category' | 'project' | 'task';
+
+export interface SessionLog {
+  id: string;
+  startTime: string; // ISO date
+  durationMinutes: number;
+  note?: string;
+}
+
+export interface TaskNode {
+  id: string;
+  title: string;
+  type: NodeType; // 'category' (structural only) | 'project' | 'task'
+  parentId: string | null;
+  status: TaskStatus; // independent of hours
+  directMinutes: number; // minutes logged directly to this node
+  sessionHistory: SessionLog[];
+  isProvisional?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ActiveTimerState {
+  taskId: string;
+  startTime: number; // Unix timestamp
+  accumulatedSeconds: number;
+  isPaused: boolean;
+}
+      </pre>
+    </div>
+
+    <p class="canonical-note">Canonical source maintained at <code>devpost/spec.md</code></p>
+  </div>
+
+  <script>
+    function switchSpecTab(tabId) {
+      document.querySelectorAll('.tab-view').forEach(v => v.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+
+      const target = document.getElementById('tab-' + tabId);
+      if (target) target.classList.add('active');
+
+      const btn = event.currentTarget;
+      if (btn) btn.classList.add('active');
+    }
+  </script>
+</body>
+</html>

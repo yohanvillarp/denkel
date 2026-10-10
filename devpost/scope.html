@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Denkel — Scope Companion</title>
+  <style>
+    :root {
+      --bg: #090d10;
+      --card-bg: rgba(18, 26, 33, 0.85);
+      --card-border: rgba(34, 197, 94, 0.2);
+      --card-hover: rgba(34, 197, 94, 0.35);
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+      --emerald-glow: #10b981;
+      --emerald-subtle: rgba(16, 185, 129, 0.12);
+      --cyan-accent: #06b6d4;
+      --amber-accent: #f59e0b;
+      --rose-accent: #f43f5e;
+      --purple-accent: #a855f7;
+      --font: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      background-image: 
+        radial-gradient(circle at 15% 20%, rgba(16, 185, 129, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 85% 80%, rgba(6, 182, 212, 0.07) 0%, transparent 40%);
+      color: var(--text);
+      font-family: var(--font);
+      line-height: 1.6;
+      padding: 2.5rem 1.5rem;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 980px;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 2.5rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 1.75rem;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+
+    .title-group h1 {
+      font-size: 2.4rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, #a7f3d0 0%, #34d399 50%, #06b6d4 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.25rem;
+    }
+
+    .title-group p {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      max-width: 650px;
+    }
+
+    .badges {
+      display: flex;
+      gap: 0.6rem;
+      align-items: center;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.85rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .badge-status {
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      color: #fbbf24;
+    }
+
+    .badge-doc {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #34d399;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    @media (min-width: 768px) {
+      .grid-2 {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 1rem;
+      padding: 1.75rem;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+      transition: border-color 0.2s ease, transform 0.2s ease;
+    }
+
+    .card:hover {
+      border-color: var(--card-hover);
+    }
+
+    .card-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      color: #f1f5f9;
+      margin-bottom: 1rem;
+    }
+
+    .icon-emerald { color: var(--emerald-glow); }
+    .icon-cyan { color: var(--cyan-accent); }
+    .icon-amber { color: var(--amber-accent); }
+    .icon-rose { color: var(--rose-accent); }
+    .icon-purple { color: var(--purple-accent); }
+
+    .highlight-box {
+      background: var(--emerald-subtle);
+      border-left: 4px solid var(--emerald-glow);
+      padding: 1.1rem 1.25rem;
+      border-radius: 0 0.75rem 0.75rem 0;
+      margin-top: 0.75rem;
+      font-style: italic;
+      color: #cbd5e1;
+    }
+
+    /* Guard Box */
+    .guard-banner {
+      background: rgba(6, 182, 212, 0.08);
+      border: 1px solid rgba(6, 182, 212, 0.25);
+      border-radius: 0.75rem;
+      padding: 1rem 1.25rem;
+      margin-bottom: 2rem;
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
+    }
+
+    .guard-banner strong {
+      color: #38bdf8;
+      display: block;
+      margin-bottom: 0.2rem;
+    }
+
+    /* Diagram */
+    .diagram-card {
+      padding: 1.5rem;
+      overflow-x: auto;
+    }
+
+    svg.system-diagram {
+      width: 100%;
+      height: auto;
+      min-width: 720px;
+      display: block;
+    }
+
+    /* Stepper */
+    .stepper-nav {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.25rem;
+      overflow-x: auto;
+      padding-bottom: 0.5rem;
+    }
+
+    .step-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-muted);
+      padding: 0.5rem 0.9rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .step-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+    }
+
+    .step-btn.active {
+      background: var(--emerald-glow);
+      color: #042f1a;
+      border-color: var(--emerald-glow);
+    }
+
+    .step-content {
+      background: rgba(0, 0, 0, 0.25);
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      min-height: 110px;
+    }
+
+    /* Reveals / Boundary Tabs */
+    .boundary-tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 0.75rem 1rem;
+      border-radius: 0.5rem;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text-muted);
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 0.95rem;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    .tab-btn.active-now {
+      background: rgba(16, 185, 129, 0.15);
+      border-color: var(--emerald-glow);
+      color: #34d399;
+    }
+
+    .tab-btn.active-later {
+      background: rgba(245, 158, 11, 0.15);
+      border-color: var(--amber-accent);
+      color: #fbbf24;
+    }
+
+    .tab-btn.active-cut {
+      background: rgba(244, 63, 94, 0.15);
+      border-color: var(--rose-accent);
+      color: #fb7185;
+    }
+
+    .tab-panel {
+      display: none;
+      animation: fadeIn 0.2s ease-in-out;
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    ul.clean-list {
+      list-style: none;
+    }
+
+    ul.clean-list li {
+      position: relative;
+      padding-left: 1.75rem;
+      margin-bottom: 0.85rem;
+      color: #cbd5e1;
+    }
+
+    ul.clean-list li::before {
+      content: "•";
+      position: absolute;
+      left: 0.5rem;
+      color: var(--emerald-glow);
+      font-size: 1.3rem;
+      line-height: 1;
+    }
+
+    ul.clean-list.cut-list li::before {
+      color: var(--rose-accent);
+    }
+
+    ul.clean-list.later-list li::before {
+      color: var(--amber-accent);
+    }
+
+    .canonical-note {
+      text-align: center;
+      margin-top: 3rem;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    .canonical-note code {
+      background: rgba(255, 255, 255, 0.08);
+      padding: 0.2rem 0.4rem;
+      border-radius: 0.3rem;
+      color: #38bdf8;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    
+    <header>
+      <div class="title-group">
+        <h1>Denkel</h1>
+        <p>A living tree task manager using AI to semantically structure tasks and visualize accumulated effort over time.</p>
+      </div>
+      <div class="badges">
+        <span class="badge badge-doc">scope</span>
+        <span class="badge badge-status" style="background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.3); color: #34d399;">status: approved</span>
+      </div>
+    </header>
+
+    <!-- Guardrails & Architecture Principles -->
+    <div class="guard-banner">
+      <div style="font-size: 1.6rem; line-height: 1;">🛡️</div>
+      <div>
+        <strong>Architectural Constraints & Data Integrity Guard:</strong>
+        <p style="color: #cbd5e1; font-size: 0.9rem;">
+          1. <strong>AI Strict Constraints:</strong> Zero phantom tasks, no duplicate nodes, stable IDs during re-parenting, zero data/time loss, and strict acyclic graph integrity.<br>
+          2. <strong>Storage Abstraction:</strong> Core state sits behind a pluggable storage interface (LocalStorage adapter for PoC) so cloud backends can drop in seamlessly later.<br>
+          3. <strong>Deliberate Interaction:</strong> Camera navigates to task details first; timer never auto-starts, and manual time logging is a first-class feature alongside the live timer.
+        </p>
+      </div>
+    </div>
+
+    <!-- The Kernel & Stakes -->
+    <div class="grid grid-2">
+      <div class="card">
+        <div class="card-title">
+          <span class="icon-emerald">✦</span> The Unique Kernel
+        </div>
+        <p>Instead of tasks vanishing into completed checklists that undervalue human effort, <strong>Denkel visualizes work as an organic living tree</strong> where branches grow and develop based on accumulated time, while AI dynamically organizes and reorganizes the hierarchy from natural language input.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span class="icon-cyan">👤</span> Who It's For & Why It Matters
+        </div>
+        <p><strong>Primary Persona:</strong> A university student managing simultaneous responsibilities (thesis, coursework, projects, chores) overwhelmed by manual organizing.</p>
+        <div class="highlight-box">
+          "I want users to open the app and say, 'Wow, I spent so much time on this, and I actually did it!'"
+        </div>
+      </div>
+    </div>
+
+    <!-- System Diagram -->
+    <div class="card diagram-card" style="margin-bottom: 2rem;">
+      <div class="card-title">
+        <span class="icon-emerald">☊</span> System Architecture & Flow
+      </div>
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.25rem;">Visualizing how natural input, AI integrity constraints, details exploration, and effort recording connect:</p>
+      
+      <svg class="system-diagram" viewBox="0 0 920 250" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Node 1: User Input -->
+        <rect x="15" y="75" width="150" height="90" rx="12" fill="#132228" stroke="#10b981" stroke-width="2"/>
+        <text x="90" y="108" text-anchor="middle" fill="#a7f3d0" font-weight="700" font-size="13">Natural Input</text>
+        <text x="90" y="128" text-anchor="middle" fill="#94a3b8" font-size="11">"Operationalization</text>
+        <text x="90" y="142" text-anchor="middle" fill="#94a3b8" font-size="11">Matrix"</text>
+
+        <!-- Arrow 1 -> 2 -->
+        <path d="M165 120 H205" stroke="#34d399" stroke-width="2"/>
+        
+        <!-- Node 2: AI Ontology Engine with Guardrails -->
+        <rect x="215" y="65" width="180" height="110" rx="12" fill="#102330" stroke="#06b6d4" stroke-width="2"/>
+        <text x="305" y="93" text-anchor="middle" fill="#67e8f9" font-weight="700" font-size="13">AI Ontology Guard</text>
+        <text x="305" y="112" text-anchor="middle" fill="#cbd5e1" font-size="10">✓ Stable Task IDs</text>
+        <text x="305" y="127" text-anchor="middle" fill="#cbd5e1" font-size="10">✓ Cycle Prevention (DAG)</text>
+        <text x="305" y="142" text-anchor="middle" fill="#cbd5e1" font-size="10">✓ Zero Time/Data Loss</text>
+        <text x="305" y="157" text-anchor="middle" fill="#cbd5e1" font-size="10">✓ No Phantom Nodes</text>
+
+        <!-- Arrow 2 -> 3 -->
+        <path d="M395 120 H435" stroke="#38bdf8" stroke-width="2"/>
+
+        <!-- Node 3: Tree Visualization Engine -->
+        <rect x="445" y="60" width="185" height="120" rx="12" fill="#18271e" stroke="#10b981" stroke-width="2"/>
+        <text x="537" y="88" text-anchor="middle" fill="#6ee7b7" font-weight="700" font-size="13">Living Tree Engine</text>
+        <circle cx="490" cy="113" r="6" fill="#fbbf24"/>
+        <text x="505" y="117" fill="#cbd5e1" font-size="11">Bud (unstarted)</text>
+        <circle cx="490" cy="133" r="6" fill="#34d399"/>
+        <text x="505" y="137" fill="#cbd5e1" font-size="11">Growing (logged hrs)</text>
+        <circle cx="490" cy="153" r="6" fill="#10b981"/>
+        <text x="505" y="157" fill="#cbd5e1" font-size="11">Developed (done)</text>
+
+        <!-- Arrow 3 -> 4 -->
+        <path d="M630 120 H665" stroke="#10b981" stroke-width="2"/>
+
+        <!-- Node 4: Task Details & Choice -->
+        <rect x="675" y="55" width="230" height="130" rx="12" fill="#241b12" stroke="#f59e0b" stroke-width="2"/>
+        <text x="790" y="82" text-anchor="middle" fill="#fde68a" font-weight="700" font-size="13">Task Details Panel</text>
+        <text x="790" y="100" text-anchor="middle" fill="#94a3b8" font-size="10">Camera focuses on node</text>
+        <!-- Dual choice boxes inside -->
+        <rect x="690" y="112" width="95" height="58" rx="6" fill="rgba(245, 158, 11, 0.2)" stroke="#f59e0b"/>
+        <text x="737" y="134" text-anchor="middle" fill="#fde68a" font-size="10" font-weight="600">Option A:</text>
+        <text x="737" y="152" text-anchor="middle" fill="#fff" font-size="10">Live Timer</text>
+
+        <rect x="795" y="112" width="95" height="58" rx="6" fill="rgba(168, 85, 247, 0.2)" stroke="#a855f7"/>
+        <text x="842" y="134" text-anchor="middle" fill="#d8b4fe" font-size="10" font-weight="600">Option B:</text>
+        <text x="842" y="152" text-anchor="middle" fill="#fff" font-size="10">Manual Log</text>
+
+        <!-- Feedback Loop Back to Tree -->
+        <path d="M790 185 V220 H537 V180" stroke="#f59e0b" stroke-dasharray="4 4" stroke-width="2"/>
+        <text x="663" y="238" text-anchor="middle" fill="#fbbf24" font-size="11">Time accumulated → Branch expands growth</text>
+      </svg>
+    </div>
+
+    <!-- The 5-Step Core Loop Interactive Stepper -->
+    <div class="card" style="margin-bottom: 2rem;">
+      <div class="card-title">
+        <span class="icon-cyan">↻</span> Interactive Core Loop
+      </div>
+      <div class="stepper-nav" id="step-nav">
+        <button class="step-btn active" onclick="setStep(0)">1. View Tree</button>
+        <button class="step-btn" onclick="setStep(1)">2. Zero-Overhead Input</button>
+        <button class="step-btn" onclick="setStep(2)">3. Constrained AI Structuring</button>
+        <button class="step-btn" onclick="setStep(3)">4. Camera Glide & Details</button>
+        <button class="step-btn" onclick="setStep(4)">5. Choose Time Tracking</button>
+      </div>
+      <div class="step-content" id="step-display">
+        <strong style="color: #6ee7b7; display: block; margin-bottom: 0.35rem;" id="step-title">1. Open the Tree</strong>
+        <p id="step-desc" style="color: #cbd5e1; font-size: 0.95rem;">The student opens Denkel to view their living botanical hierarchy. Responsibilities, thesis tasks, and coursework branch out organically with node states reflecting accumulated effort.</p>
+      </div>
+    </div>
+
+    <!-- Proof & Boundary -->
+    <div class="grid grid-2">
+      <div class="card">
+        <div class="card-title">
+          <span class="icon-amber">★</span> What "Working" Looks Like
+        </div>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.75rem;">A 60–90 second screen recording demonstrates:</p>
+        <ul class="clean-list">
+          <li><strong>Natural Input:</strong> Enter task & watch AI link under parent while preserving existing IDs and data.</li>
+          <li><strong>Smooth Camera:</strong> Seamless glide directly to the target node.</li>
+          <li><strong>Details First:</strong> Panel opens showing task info with two options: live timer or manual entry.</li>
+          <li><strong>Effort Logged:</strong> User runs live timer or inputs hours; branch visually expands growth.</li>
+          <li><strong>Instant Search:</strong> Search query smoothly navigates camera to the matching branch.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span class="icon-emerald">⚙</span> POC Boundary Matrix
+        </div>
+        <div class="boundary-tabs">
+          <button class="tab-btn active-now" id="btn-now" onclick="showTab('now')">Now (PoC)</button>
+          <button class="tab-btn" id="btn-later" onclick="showTab('later')">Later</button>
+          <button class="tab-btn" id="btn-cut" onclick="showTab('cut')">Cut</button>
+        </div>
+
+        <div class="tab-panel active" id="tab-now">
+          <ul class="clean-list">
+            <li>Natural language task parsing with AI restructuring under strict integrity guards (no cycles, stable IDs, no phantom tasks, no time loss).</li>
+            <li>Interactive visual tree with smooth camera transitions and 3 branch states.</li>
+            <li>Task details panel presenting explicit choices for live timer or manual time log.</li>
+            <li>Focused live timer session (elapsed time, pause, finish).</li>
+            <li>Manual time entry dialog for retrospective logging.</li>
+            <li>Search bar with automatic camera navigation.</li>
+            <li><strong>Storage abstraction layer</strong> with local browser storage implementation.</li>
+          </ul>
+        </div>
+
+        <div class="tab-panel" id="tab-later">
+          <ul class="clean-list later-list">
+            <li>Cloud sync and user accounts (drop-in cloud storage adapter).</li>
+            <li>Multi-user collaboration & shared team trees.</li>
+            <li>Exportable time analytics & calendar integration.</li>
+            <li>Mobile native gestures & touch optimizations.</li>
+          </ul>
+        </div>
+
+        <div class="tab-panel" id="tab-cut">
+          <ul class="clean-list cut-list">
+            <li><strong>Backend DB / Auth setup:</strong> Cut to keep the PoC fast, private, and local for the 2–4 hr hackathon window.</li>
+            <li><strong>Background system alarms:</strong> Cut to keep timer self-contained in-tab.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <p class="canonical-note">Canonical source maintained at <code>devpost/scope.md</code></p>
+  </div>
+
+  <script>
+    const steps = [
+      {
+        title: "1. View the Living Tree",
+        desc: "The student opens Denkel to view their living botanical hierarchy. Responsibilities, thesis tasks, and coursework branch out organically with node states reflecting accumulated effort."
+      },
+      {
+        title: "2. Zero-Overhead Natural Input",
+        desc: "Without agonizing over folder pickers or tags, the student types a natural task description (e.g., 'Operationalization Matrix')."
+      },
+      {
+        title: "3. Constrained AI Structuring",
+        desc: "The AI interprets context and links branches under strict data constraints: no cycles, no phantom tasks, stable IDs, and zero loss of existing time records."
+      },
+      {
+        title: "4. Camera Glide & Details First",
+        desc: "The camera glides smoothly to highlight the node and opens the details panel. The timer does NOT auto-start; the user reviews details at their own pace."
+      },
+      {
+        title: "5. Choose Time Tracking (Live or Manual)",
+        desc: "The user chooses between launching the focused live timer or entering past hours manually. In either case, the branch visually expands to reflect earned effort."
+      }
+    ];
+
+    function setStep(index) {
+      document.getElementById('step-title').textContent = steps[index].title;
+      document.getElementById('step-desc').textContent = steps[index].desc;
+      const btns = document.querySelectorAll('.step-btn');
+      btns.forEach((b, i) => {
+        b.classList.toggle('active', i === index);
+      });
+    }
+
+    function showTab(type) {
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.remove('active-now', 'active-later', 'active-cut');
+      });
+
+      const panel = document.getElementById('tab-' + type);
+      const btn = document.getElementById('btn-' + type);
+      if (panel && btn) {
+        panel.classList.add('active');
+        btn.classList.add('active-' + type);
+      }
+    }
+  </script>
+</body>
+</html>

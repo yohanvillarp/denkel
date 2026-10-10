@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Denkel — Product Requirements Companion</title>
+  <style>
+    :root {
+      --bg: #fcfbf9;
+      --card-bg: #ffffff;
+      --card-border: rgba(45, 106, 79, 0.15);
+      --card-hover: rgba(45, 106, 79, 0.28);
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --forest-dark: #1b4332;
+      --forest-mid: #2d6a4f;
+      --foliage-green: #40916c;
+      --leaf-emerald: #52b788;
+      --emerald-subtle: rgba(82, 183, 136, 0.12);
+      --amber-accent: #d97706;
+      --amber-subtle: rgba(217, 119, 6, 0.1);
+      --rose-accent: #e11d48;
+      --focus-bg: #f4f8f5;
+      --font: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      background-image: 
+        radial-gradient(circle at 10% 15%, rgba(82, 183, 136, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 90% 85%, rgba(45, 106, 79, 0.05) 0%, transparent 45%);
+      color: var(--text);
+      font-family: var(--font);
+      line-height: 1.6;
+      padding: 2.5rem 1.5rem;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1020px;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 2.25rem;
+      border-bottom: 1px solid rgba(45, 106, 79, 0.12);
+      padding-bottom: 1.5rem;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+
+    .title-group h1 {
+      font-size: 2.25rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: var(--forest-dark);
+      margin-bottom: 0.25rem;
+    }
+
+    .title-group p {
+      color: var(--text-muted);
+      font-size: 1.05rem;
+      max-width: 700px;
+    }
+
+    .badges {
+      display: flex;
+      gap: 0.6rem;
+      align-items: center;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.85rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .badge-status {
+      background: var(--amber-subtle);
+      border: 1px solid rgba(217, 119, 6, 0.3);
+      color: var(--amber-accent);
+    }
+
+    .badge-doc {
+      background: var(--emerald-subtle);
+      border: 1px solid rgba(45, 106, 79, 0.3);
+      color: var(--forest-mid);
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 1rem;
+      padding: 1.75rem;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+      margin-bottom: 1.75rem;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .card:hover {
+      border-color: var(--card-hover);
+      box-shadow: 0 6px 24px rgba(45, 106, 79, 0.08);
+    }
+
+    .card-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      color: var(--forest-dark);
+      margin-bottom: 1rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+      margin-bottom: 1.75rem;
+    }
+
+    @media (min-width: 768px) {
+      .grid-2 {
+        grid-template-columns: 1fr 1fr;
+      }
+      .grid-3 {
+        grid-template-columns: 1fr 1fr 1fr;
+      }
+    }
+
+    /* Refinements callout banner */
+    .banner-refinements {
+      background: rgba(45, 106, 79, 0.06);
+      border: 1px solid rgba(45, 106, 79, 0.2);
+      border-radius: 0.85rem;
+      padding: 1.25rem;
+      margin-bottom: 1.75rem;
+    }
+
+    .banner-refinements h3 {
+      font-size: 1rem;
+      color: var(--forest-dark);
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .banner-refinements ul {
+      list-style: none;
+      font-size: 0.88rem;
+      color: #334155;
+    }
+
+    .banner-refinements li {
+      position: relative;
+      padding-left: 1.25rem;
+      margin-bottom: 0.35rem;
+    }
+
+    .banner-refinements li::before {
+      content: "✦";
+      position: absolute;
+      left: 0;
+      color: var(--foliage-green);
+    }
+
+    /* Diagram */
+    .diagram-card {
+      overflow-x: auto;
+    }
+
+    svg.journey-diagram {
+      width: 100%;
+      height: auto;
+      min-width: 860px;
+      display: block;
+    }
+
+    /* Surface Interactive Tabs */
+    .nav-tabs {
+      display: flex;
+      gap: 0.5rem;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+      padding-bottom: 0.5rem;
+      margin-bottom: 1.25rem;
+      overflow-x: auto;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.95rem;
+      transition: all 0.2s;
+    }
+
+    .tab-btn:hover {
+      color: var(--forest-dark);
+      background: rgba(45, 106, 79, 0.05);
+    }
+
+    .tab-btn.active {
+      color: var(--forest-dark);
+      background: var(--emerald-subtle);
+      font-weight: 700;
+    }
+
+    .tab-view {
+      display: none;
+      animation: fadeIn 0.2s ease-in-out;
+    }
+
+    .tab-view.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* State Visualizer Cards */
+    .state-card {
+      border: 1px solid var(--card-border);
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      background: #faf9f6;
+    }
+
+    .state-badge {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 0.75rem;
+    }
+
+    .badge-bud { background: var(--amber-subtle); color: var(--amber-accent); }
+    .badge-growing { background: var(--emerald-subtle); color: var(--forest-mid); }
+    .badge-completed { background: rgba(34, 197, 94, 0.15); color: #15803d; }
+
+    /* Checkable criteria */
+    ul.criteria-list {
+      list-style: none;
+    }
+
+    ul.criteria-list li {
+      position: relative;
+      padding-left: 1.85rem;
+      margin-bottom: 0.65rem;
+      font-size: 0.925rem;
+      color: #334155;
+    }
+
+    ul.criteria-list li::before {
+      content: "✔";
+      position: absolute;
+      left: 0.25rem;
+      color: var(--foliage-green);
+      font-weight: 800;
+    }
+
+    .matrix-box {
+      background: #faf9f6;
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .matrix-box strong {
+      color: var(--forest-dark);
+      display: block;
+      margin-bottom: 0.25rem;
+    }
+
+    .canonical-note {
+      text-align: center;
+      margin-top: 3rem;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    .canonical-note code {
+      background: rgba(0, 0, 0, 0.05);
+      padding: 0.2rem 0.4rem;
+      border-radius: 0.3rem;
+      color: var(--forest-mid);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <header>
+      <div class="title-group">
+        <h1>Denkel</h1>
+        <p>Product Requirements Document (PRD) — Defining surfaces, interaction behaviors, lifecycle states, and acceptance criteria.</p>
+      </div>
+      <div class="badges">
+        <span class="badge badge-doc">prd</span>
+        <span class="badge badge-status" style="background: var(--emerald-subtle); border-color: rgba(45, 106, 79, 0.3); color: var(--forest-mid);">status: approved</span>
+      </div>
+    </header>
+
+    <!-- Key Product Refinements Banner -->
+    <div class="banner-refinements">
+      <h3><span>🌿</span> Core Architectural Clarifications & Decoupling</h3>
+      <ul>
+        <li><strong>Direct vs. Subtask Time Breakdown:</strong> Projects report total hours while explicitly breaking down direct effort (e.g. 2h) versus subtask contributions (e.g. 7h = 9h total), preventing double-counting and data loss.</li>
+        <li><strong>Provisional Branches:</strong> Unrelated tasks sprout directly from the trunk as a provisional primary branch without force-inventing unnecessary categories.</li>
+        <li><strong>Active Timer Crash Resilience:</strong> Active session state (running/paused, start timestamp, active elapsed duration) persists across browser refreshes and tab reloads.</li>
+        <li><strong>Decoupled Status & Time:</strong> A task in "Pending" can have logged exploratory hours, rendering as an unopened bud with earned branch thickness.</li>
+        <li><strong>Categories vs. Tasks:</strong> Structural containers (e.g., <em>"University"</em>) organize hierarchy without timers or completion buttons. Actionable tasks retain full tracking.</li>
+        <li><strong>Continuous Elapsed Timer:</strong> Circular indicator animates smooth elapsed time, avoiding arbitrary countdown percentages or artificial deadlines.</li>
+        <li><strong>Adaptive Zoom (LOD):</strong> Overview zoom collapses subtasks into clean branch tips to prevent text collision; close-up zoom reveals full titles and twigs.</li>
+      </ul>
+    </div>
+
+    <!-- Visual Journey Diagram -->
+    <div class="card diagram-card">
+      <div class="card-title">
+        <span>🌱</span> End-to-End Product Journey Flow
+      </div>
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.25rem;">The continuous path from initial seedling to mature, leaf-developed branches and effortless navigation:</p>
+
+      <svg class="journey-diagram" viewBox="0 0 920 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Step 1: Empty Seedling -->
+        <rect x="15" y="40" width="135" height="90" rx="10" fill="#faf9f6" stroke="#2d6a4f" stroke-width="1.5"/>
+        <text x="82" y="68" text-anchor="middle" fill="#1b4332" font-weight="700" font-size="12">1. First Arrival</text>
+        <text x="82" y="88" text-anchor="middle" fill="#64748b" font-size="10">Centered seedling trunk</text>
+        <text x="82" y="103" text-anchor="middle" fill="#64748b" font-size="10">"Plant first task..."</text>
+
+        <!-- Arrow 1 -> 2 -->
+        <path d="M150 85 H175" stroke="#40916c" stroke-width="2"/>
+
+        <!-- Step 2: Natural Input & AI -->
+        <rect x="185" y="40" width="160" height="90" rx="10" fill="#faf9f6" stroke="#2d6a4f" stroke-width="1.5"/>
+        <text x="265" y="68" text-anchor="middle" fill="#1b4332" font-weight="700" font-size="12">2. Natural Input</text>
+        <text x="265" y="88" text-anchor="middle" fill="#64748b" font-size="10">AI links / sprouts</text>
+        <text x="265" y="103" text-anchor="middle" fill="#64748b" font-size="10">Provisional branch if new</text>
+
+        <!-- Arrow 2 -> 3 -->
+        <path d="M345 85 H370" stroke="#40916c" stroke-width="2"/>
+
+        <!-- Step 3: Details Drawer -->
+        <rect x="380" y="40" width="160" height="90" rx="10" fill="#faf9f6" stroke="#2d6a4f" stroke-width="1.5"/>
+        <text x="460" y="68" text-anchor="middle" fill="#1b4332" font-weight="700" font-size="12">3. Details Drawer</text>
+        <text x="460" y="88" text-anchor="middle" fill="#64748b" font-size="10">Direct vs Subtask time</text>
+        <text x="460" y="103" text-anchor="middle" fill="#64748b" font-size="10">Session history logs</text>
+
+        <!-- Arrow 3 -> 4 -->
+        <path d="M540 85 H565" stroke="#40916c" stroke-width="2"/>
+
+        <!-- Step 4: Time Tracking Surface -->
+        <rect x="575" y="40" width="165" height="90" rx="10" fill="#f4f8f5" stroke="#40916c" stroke-width="1.5"/>
+        <text x="657" y="68" text-anchor="middle" fill="#1b4332" font-weight="700" font-size="12">4. Record Effort</text>
+        <text x="657" y="88" text-anchor="middle" fill="#64748b" font-size="10">Elapsed sweep timer OR</text>
+        <text x="657" y="103" text-anchor="middle" fill="#64748b" font-size="10">Crash/refresh resilient</text>
+
+        <!-- Arrow 4 -> 5 -->
+        <path d="M740 85 H765" stroke="#40916c" stroke-width="2"/>
+
+        <!-- Step 5: Visual Growth -->
+        <rect x="775" y="40" width="130" height="90" rx="10" fill="#faf9f6" stroke="#15803d" stroke-width="2"/>
+        <text x="840" y="68" text-anchor="middle" fill="#15803d" font-weight="700" font-size="12">5. Visible Growth</text>
+        <text x="840" y="88" text-anchor="middle" fill="#64748b" font-size="10">Bounded bark thickness</text>
+        <text x="840" y="103" text-anchor="middle" fill="#64748b" font-size="10">Leaves on completion</text>
+      </svg>
+    </div>
+
+    <!-- Surfaces & Layout Explorer -->
+    <div class="card">
+      <div class="card-title">
+        <span>🖥️</span> Screen Surfaces & Layout
+      </div>
+      <div class="nav-tabs">
+        <button class="tab-btn active" onclick="switchSurface('canvas')">1. Main Canvas & LOD</button>
+        <button class="tab-btn" onclick="switchSurface('details')">2. Task Details Drawer</button>
+        <button class="tab-btn" onclick="switchSurface('focus')">3. Focus Mode Timer</button>
+        <button class="tab-btn" onclick="switchSurface('search')">4. Floating Search</button>
+      </div>
+
+      <div class="tab-view active" id="view-canvas">
+        <h4 style="color: var(--forest-dark); margin-bottom: 0.5rem;">The Living Canvas & Adaptive Level of Detail (LOD)</h4>
+        <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 1rem;">
+          Clean, warm-white screen where the botanical tree takes center stage with adaptive detail to prevent clutter at scale.
+        </p>
+        <div class="grid grid-3">
+          <div class="matrix-box">
+            <strong>Overview Zoom (LOD 1)</strong>
+            <p style="font-size: 0.85rem; color: #475569;">Major categories and primary projects visible; minor twigs collapse into clean tips without text overlap.</p>
+          </div>
+          <div class="matrix-box">
+            <strong>Close-up Zoom (LOD 2)</strong>
+            <p style="font-size: 0.85rem; color: #475569;">Subtask titles, state markers, and leaf clusters smoothly fade in when focusing on a branch cluster.</p>
+          </div>
+          <div class="matrix-box">
+            <strong>Provisional Branches</strong>
+            <p style="font-size: 0.85rem; color: #475569;">Unrelated tasks sprout directly from the trunk without force-inventing artificial single-item categories.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-view" id="view-details">
+        <h4 style="color: var(--forest-dark); margin-bottom: 0.5rem;">Task Details Drawer (Slide-Over)</h4>
+        <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 1rem;">
+          Slides in from the right when an actionable task is clicked. Transparently displays direct effort and subtask contributions.
+        </p>
+        <ul class="criteria-list">
+          <li>Displays Task Title, Hierarchy Path (e.g. <em>University > Thesis > Matrix</em>), and current status badge.</li>
+          <li><strong>Direct vs. Subtask Breakdown:</strong> Clearly separates hours logged directly on the node from hours contributed by child tasks (e.g. <em>Total: 9h — Direct: 2h, Subtasks: 7h</em>).</li>
+          <li><strong>Session History Log:</strong> Displays past individual sessions (e.g., <em>Oct 10: 40m</em>, <em>Oct 11: 1h</em>) and the sum total.</li>
+          <li>Two primary action triggers: <strong>Start Timer</strong> (Focus Mode) or <strong>Log Time Manually</strong> (inline form).</li>
+          <li>Status toggle to mark task as completed (sprouts leaf clusters without altering logged time).</li>
+        </ul>
+      </div>
+
+      <div class="tab-view" id="view-focus">
+        <h4 style="color: var(--forest-dark); margin-bottom: 0.5rem;">Distraction-Free Focus Mode (Crash Resilient)</h4>
+        <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 1rem;">
+          Inspired by the clean Stitch design. The tree completely fades away, centering the user's mind entirely on the work at hand.
+        </p>
+        <ul class="criteria-list">
+          <li>Serene, slightly greenish-white background with no visual noise.</li>
+          <li>Task title cleanly anchored at the top.</li>
+          <li>Large central timer with a <strong>continuous elapsed-time sweep animation</strong> (no artificial progress percentage).</li>
+          <li><strong>Crash/Reload Resilience:</strong> Actively running or paused timer state is automatically restored if the page is refreshed or tab closed.</li>
+          <li>Only two essential controls: <strong>Pause / Resume</strong> and <strong>Finish</strong>.</li>
+        </ul>
+      </div>
+
+      <div class="tab-view" id="view-search">
+        <h4 style="color: var(--forest-dark); margin-bottom: 0.5rem;">Floating Semantic Search</h4>
+        <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 1rem;">
+          Invoked via top search icon or shortcut (`/` or `Ctrl+K`) without leaving the living canvas.
+        </p>
+        <ul class="criteria-list">
+          <li>Accepts exact task names or approximate queries (e.g. <em>"unfinished thesis task"</em>).</li>
+          <li>Result items show task name, category path, and status badge.</li>
+          <li>Selecting a result triggers smart camera navigation: zooms out slightly to orient, glides to target branch, highlights it, and slides open details drawer.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- The 3 Botanical Lifecycle States -->
+    <div class="card">
+      <div class="card-title">
+        <span>🌿</span> The 3 Botanical Lifecycle States (Decoupled from Time)
+      </div>
+      <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.25rem;">
+        Lifecycle state and accumulated hours are 100% independent. A task can have recorded hours in any state:
+      </p>
+      <div class="grid grid-3">
+        <div class="state-card">
+          <span class="state-badge badge-bud">Pending (Bud)</span>
+          <h4 style="color: var(--forest-dark); margin-bottom: 0.35rem;">Unopened Bud</h4>
+          <p style="font-size: 0.875rem; color: #475569;">
+            Rendered as a small rounded amber bud. Indicates pending status (can have accumulated exploratory time and earned thickness while remaining pending).
+          </p>
+        </div>
+        <div class="state-card">
+          <span class="state-badge badge-growing">In Progress</span>
+          <h4 style="color: var(--forest-dark); margin-bottom: 0.35rem;">Growing Branch</h4>
+          <p style="font-size: 0.875rem; color: #475569;">
+            Active branch with thickness scaling with logged time up to a defined ceiling to preserve layout aesthetics.
+          </p>
+        </div>
+        <div class="state-card">
+          <span class="state-badge badge-completed">Completed</span>
+          <h4 style="color: var(--forest-dark); margin-bottom: 0.35rem;">Developed with Leaves</h4>
+          <p style="font-size: 0.875rem; color: #475569;">
+            Sprouts vibrant green leaf clusters along the branch tip. Retains full branch thickness and earned effort.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edge Cases & What-If Matrix -->
+    <div class="card">
+      <div class="card-title">
+        <span>🛡️</span> Consequential States & "What If?" Matrix
+      </div>
+      <div class="grid grid-2">
+        <div class="matrix-box">
+          <strong>Empty State & Germination</strong>
+          <p style="font-size: 0.875rem; color: #475569;">
+            Brand new user sees a small seedling trunk with <em>"Plant your first task below..."</em>. First task triggers a brief germination animation into a trunk and branch. Zero fictional dummy tasks.
+          </p>
+        </div>
+        <div class="matrix-box">
+          <strong>Semantic Ambiguity</strong>
+          <p style="font-size: 0.875rem; color: #475569;">
+            If the AI detects multiple potential parent candidates (e.g. <em>"Review project"</em>), it displays an inline clarification question in the bar before moving or modifying branches.
+          </p>
+        </div>
+        <div class="matrix-box">
+          <strong>Empty or Gibberish Input</strong>
+          <p style="font-size: 0.875rem; color: #475569;">
+            Empty Enter displays subtle <em>"Please enter a task"</em>. Gibberish asks for clarification while preserving the typed text in place for easy editing.
+          </p>
+        </div>
+        <div class="matrix-box">
+          <strong>Crash / Reload Resilience</strong>
+          <p style="font-size: 0.875rem; color: #475569;">
+            Refreshing the page during a running or paused focus session seamlessly restores the timer state with zero lost time.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Acceptance Criteria -->
+    <div class="card">
+      <div class="card-title">
+        <span>📋</span> Verifiable Acceptance Criteria
+      </div>
+      <ul class="criteria-list">
+        <li>Categories act as organizational groupings without timers or completion buttons.</li>
+        <li>Actionable tasks support live timer, manual entry, session history, and completion toggles.</li>
+        <li>Parent nodes with subtasks clearly display both Direct Node Hours and Subtask Contributed Hours (e.g. 9h total = 2h direct + 7h subtasks).</li>
+        <li>Entering an unrelated task sprouts a provisional primary branch from the trunk without force-inventing unnecessary categories.</li>
+        <li>Refreshing or closing/reopening the page while a timer is active seamlessly recovers the session state (running or paused) without data loss.</li>
+        <li>A task can hold recorded time while in "Pending" status, rendering as an unopened bud with earned thickness.</li>
+        <li>Focus Mode timer circular indicator animates elapsed time without an artificial percentage limit.</li>
+        <li>Details drawer logs discrete session entries (date + duration) and shows the sum total.</li>
+        <li>Adaptive LOD prevents text collisions at overview zoom and reveals labels on close-up zoom.</li>
+        <li>All tasks, categories, session logs, and active timer state persist across browser refreshes via the storage abstraction.</li>
+      </ul>
+    </div>
+
+    <p class="canonical-note">Canonical source maintained at <code>devpost/prd.md</code></p>
+  </div>
+
+  <script>
+    function switchSurface(surface) {
+      document.querySelectorAll('.tab-view').forEach(v => v.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      
+      const targetView = document.getElementById('view-' + surface);
+      if (targetView) targetView.classList.add('active');
+
+      const activeBtn = event.currentTarget;
+      if (activeBtn) activeBtn.classList.add('active');
+    }
+  </script>
+</body>
+</html>
