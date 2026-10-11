@@ -183,26 +183,53 @@ export class CameraController {
     padding: number = 90,
     animate: boolean = false,
     durationMs: number = 600,
-    onComplete?: () => void
+    onComplete?: () => void,
+    targetScreenX?: number,
+    targetScreenY?: number,
+    availWidth?: number,
+    availHeight?: number,
+    customCenterWorldX?: number,
+    customCenterWorldY?: number
   ): void {
-    const boundsWidth = Math.max(120, bounds.maxX - bounds.minX);
-    const boundsHeight = Math.max(120, bounds.maxY - bounds.minY);
+    const effectiveWidth = Math.max(120, (availWidth !== undefined ? availWidth : screenWidth) - padding * 2);
+    const effectiveHeight = Math.max(120, (availHeight !== undefined ? availHeight : screenHeight) - padding * 2);
 
-    const availWidth = Math.max(120, screenWidth - padding * 2);
-    const availHeight = Math.max(120, screenHeight - padding * 2);
+    const centerWorldX = customCenterWorldX !== undefined ? customCenterWorldX : (bounds.minX + bounds.maxX) / 2;
+    const centerWorldY = customCenterWorldY !== undefined ? customCenterWorldY : (bounds.minY + bounds.maxY) / 2;
+
+    // Measure maximum distance from center to bounds edges so all children and labels fit comfortably
+    const maxDistX = Math.max(Math.abs(centerWorldX - bounds.minX), Math.abs(bounds.maxX - centerWorldX));
+    const maxDistY = Math.max(Math.abs(centerWorldY - bounds.minY), Math.abs(bounds.maxY - centerWorldY));
+
+    const fitZoomX = (effectiveWidth / 2) / Math.max(60, maxDistX);
+    const fitZoomY = (effectiveHeight / 2) / Math.max(60, maxDistY);
 
     const fitZoom = Math.min(
       1.15,
-      Math.max(this.minZoom, Math.min(availWidth / boundsWidth, availHeight / boundsHeight))
+      Math.max(this.minZoom, Math.min(fitZoomX, fitZoomY))
     );
 
-    const centerWorldX = (bounds.minX + bounds.maxX) / 2;
-    const centerWorldY = (bounds.minY + bounds.maxY) / 2;
-
     if (animate) {
-      this.flyTo(centerWorldX, centerWorldY, screenWidth, screenHeight, fitZoom, durationMs, onComplete);
+      this.flyTo(
+        centerWorldX,
+        centerWorldY,
+        screenWidth,
+        screenHeight,
+        fitZoom,
+        durationMs,
+        onComplete,
+        targetScreenX,
+        targetScreenY
+      );
     } else {
-      this.setCenter(centerWorldX, centerWorldY, screenWidth, screenHeight, fitZoom);
+      const screenCenterX = targetScreenX !== undefined ? targetScreenX : screenWidth / 2;
+      const screenCenterY = targetScreenY !== undefined ? targetScreenY : screenHeight / 2;
+      this.cancelAnimation();
+      this.zoom = fitZoom;
+      this.targetZoom = fitZoom;
+      this.panX = screenCenterX - centerWorldX * fitZoom;
+      this.panY = screenCenterY - centerWorldY * fitZoom;
+      this.notify();
     }
   }
 
@@ -213,7 +240,9 @@ export class CameraController {
     screenHeight: number,
     targetZoom: number = 1.0,
     durationMs: number = 600,
-    onComplete?: () => void
+    onComplete?: () => void,
+    targetScreenX?: number,
+    targetScreenY?: number
   ): void {
     this.cancelAnimation();
 
@@ -221,9 +250,12 @@ export class CameraController {
     const startPanY = this.panY;
     const startZoom = this.zoom;
 
-    const endPanX = screenWidth / 2 - targetWorldX * targetZoom;
-    const endPanY = screenHeight / 2 - targetWorldY * targetZoom;
+    const screenCenterX = targetScreenX !== undefined ? targetScreenX : screenWidth / 2;
+    const screenCenterY = targetScreenY !== undefined ? targetScreenY : screenHeight / 2;
+
     const endZoom = Math.min(this.maxZoom, Math.max(this.minZoom, targetZoom));
+    const endPanX = screenCenterX - targetWorldX * endZoom;
+    const endPanY = screenCenterY - targetWorldY * endZoom;
 
     const startTime = performance.now();
 

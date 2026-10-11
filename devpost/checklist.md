@@ -49,7 +49,7 @@ Build mode: learn
   Learner check: Type a related subtask (e.g., "Literature review chapter 2") and watch it automatically nest under an existing project branch; type an unrelated task to confirm it creates a distinct branch cleanly without errors.
   Commit: `Integrate Gemini API proxy with integrity guard and automated categorization`
 
-- [ ] **5. Semantic search, guided camera flight, and adaptive detail view**
+- [x] **5. Semantic search, guided camera flight, and adaptive detail view**
   Becomes usable: A floating search modal (triggered by `/` or search icon) that finds tasks across the tree and smoothly flies the camera (`flyTo`) to center and highlight the matching branch. Viewport features adaptive Level of Detail (LOD) that collapses subtasks when zoomed out and reveals detailed labels when zoomed in.
   Why now: Builds on the camera navigation from Slice 1 to complete the full core journey, guided exploration, and visual polish for scaling trees.
   PRD ref: `prd.md > The Core Journey` (steps 4, 9), `prd.md > Floating Search & Guided Camera Navigation`, `prd.md > Tree Scalability & Adaptive Level of Detail`

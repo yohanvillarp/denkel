@@ -477,7 +477,36 @@ export class TreeRenderer {
         ctx.arc(0, 0, catRadius, 0, Math.PI * 2);
         ctx.fill();
 
-        if (isSelected || isHovered) {
+        if (isSelected) {
+          // Luminous botanical beacon aura for selected category joint
+          ctx.fillStyle = 'rgba(16, 185, 129, 0.16)';
+          ctx.beginPath();
+          ctx.arc(0, 0, catRadius + 14, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = 'rgba(16, 185, 129, 0.28)';
+          ctx.beginPath();
+          ctx.arc(0, 0, catRadius + 8, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.strokeStyle = '#10b981';
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.arc(0, 0, catRadius + 5, 0, Math.PI * 2);
+          ctx.stroke();
+
+          // Inner dark emerald joint core
+          ctx.fillStyle = '#064e3b';
+          ctx.beginPath();
+          ctx.arc(0, 0, catRadius, 0, Math.PI * 2);
+          ctx.fill();
+
+          // White center beacon pip
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(0, 0, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (isHovered) {
           ctx.strokeStyle = 'rgba(16, 91, 56, 0.45)';
           ctx.lineWidth = 2;
           ctx.beginPath();
@@ -485,9 +514,14 @@ export class TreeRenderer {
           ctx.stroke();
         }
 
-        // Category Stream Label (fades in once branch has reached maturity)
-        if (node.sproutProgress > 0.4) {
-          ctx.font = '600 11px "Plus Jakarta Sans", sans-serif';
+        // Category Stream Label (Adaptive Level of Detail: visible down to 0.35 zoom, smoothly fading)
+        const isCatLabelVisible = isSelected || isHovered || zoom >= 0.35;
+        if (isCatLabelVisible && node.sproutProgress > 0.4) {
+          const catOpacity = isSelected || isHovered || zoom >= 0.45 ? 1.0 : (zoom - 0.35) / 0.10;
+          ctx.save();
+          ctx.globalAlpha = Math.max(0.1, Math.min(1.0, catOpacity));
+
+          ctx.font = isSelected ? '700 11px "Plus Jakarta Sans", sans-serif' : '600 11px "Plus Jakarta Sans", sans-serif';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
 
@@ -515,13 +549,36 @@ export class TreeRenderer {
 
           const tagY = node.labelPlacement === 'bottom' ? 18 : -18;
 
-          ctx.fillStyle = 'rgba(251, 252, 249, 0.94)';
+          ctx.fillStyle = isSelected ? '#ffffff' : 'rgba(251, 252, 249, 0.94)';
+          if (isSelected) {
+            ctx.shadowColor = 'rgba(16, 185, 129, 0.25)';
+            ctx.shadowBlur = 10;
+            ctx.shadowOffsetY = 2;
+          }
           ctx.beginPath();
-          ctx.roundRect(-textWidth / 2 - 8, tagY - 10, textWidth + 16, 20, 6);
+          ctx.roundRect(-textWidth / 2 - 12, tagY - 12, textWidth + 24, 24, 8);
           ctx.fill();
+          ctx.shadowColor = 'transparent';
 
-          ctx.fillStyle = this.COLOR_TEXT_CATEGORY;
-          ctx.fillText(categoryTitle, 0, tagY);
+          if (isSelected) {
+            ctx.strokeStyle = '#10b981';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Distinct green beacon pip inside tag
+            ctx.fillStyle = '#10b981';
+            ctx.beginPath();
+            ctx.arc(-textWidth / 2 - 4, tagY, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+          } else {
+            ctx.strokeStyle = '#e2ece4';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+          }
+
+          ctx.fillStyle = isSelected ? '#064e3b' : this.COLOR_TEXT_CATEGORY;
+          ctx.fillText(categoryTitle, isSelected ? 4 : 0, tagY);
+          ctx.restore();
         }
 
         ctx.restore();
@@ -534,6 +591,12 @@ export class TreeRenderer {
       const radius = (isSelected ? 10 : isHovered ? 8 : 6) * node.sproutProgress;
 
       if (isSelected || isHovered) {
+        if (isSelected) {
+          ctx.fillStyle = 'rgba(16, 185, 129, 0.22)';
+          ctx.beginPath();
+          ctx.arc(0, 0, radius + 10, 0, Math.PI * 2);
+          ctx.fill();
+        }
         ctx.strokeStyle = isSelected ? this.COLOR_LEAF : 'rgba(16, 185, 129, 0.4)';
         ctx.lineWidth = isSelected ? 3 : 2;
         ctx.beginPath();
@@ -591,11 +654,36 @@ export class TreeRenderer {
       }
 
       // ==============================================================
-      // 3. Staggered Collision-Free Pill Label Tag
+      // 3. Staggered Collision-Free Pill Label Tag (with Adaptive LOD)
       // ==============================================================
-      const shouldShowLabel = zoom >= 0.45 || !node.parentId || isSelected;
+      // Level of Detail (LOD) thresholds:
+      // - Overview Mode (zoom < 0.48): Subtask labels collapse into clean stylized branch tips
+      // - Transition (0.48 <= zoom < 0.65): Labels smoothly fade in via globalAlpha
+      // - Detail Mode (zoom >= 0.65): All labels and subtask hours fully visible
+      // - Highlight Override: Selected or hovered nodes ALWAYS render with 100% full opacity
+      const isTopLevel = !node.parentId;
+      let labelOpacity = 0;
+      if (isSelected || isHovered) {
+        labelOpacity = 1.0;
+      } else if (isTopLevel) {
+        if (zoom >= 0.45) {
+          labelOpacity = 1.0;
+        } else if (zoom >= 0.32) {
+          labelOpacity = (zoom - 0.32) / 0.13;
+        }
+      } else {
+        // Child subtasks
+        if (zoom >= 0.65) {
+          labelOpacity = 1.0;
+        } else if (zoom >= 0.48) {
+          labelOpacity = (zoom - 0.48) / 0.17;
+        }
+      }
 
-      if (shouldShowLabel && node.sproutProgress > 0.4) {
+      if (labelOpacity > 0.05 && node.sproutProgress > 0.4) {
+        ctx.save();
+        ctx.globalAlpha = Math.min(1.0, labelOpacity);
+
         const {
           totalPillWidth,
           pillHeight,
@@ -662,6 +750,8 @@ export class TreeRenderer {
           ctx.textAlign = 'right';
           ctx.fillText(hoursText, pillX + totalPillWidth - paddingRight, pillY + pillHeight / 2);
         }
+
+        ctx.restore();
       }
 
       ctx.restore();
@@ -814,6 +904,80 @@ export class TreeRenderer {
   public getNodePosition(taskId: string): { x: number; y: number } | null {
     const node = this.nodes.get(taskId);
     if (!node) return null;
-    return { x: node.currentX, y: node.currentY };
+    return { x: node.targetX, y: node.targetY };
+  }
+
+  /**
+   * Computes the ideal camera target framing for a task or category.
+   * - For categories: frames the category joint together with its direct children cluster,
+   *   so the relationship and branch hierarchy are clearly visible.
+   * - For individual tasks: frames the task node with comfortable padding around its label.
+   */
+  public getTaskFraming(taskId: string): {
+    centerWorldX: number;
+    centerWorldY: number;
+    bounds?: { minX: number; maxX: number; minY: number; maxY: number };
+    isCluster: boolean;
+  } | null {
+    const node = this.nodes.get(taskId);
+    if (!node) return null;
+
+    if (node.type === 'category') {
+      const children = Array.from(this.nodes.values()).filter(n => n.parentId === node.id);
+      if (children.length > 0) {
+        // Measure category label pill
+        const catPillWidth = Math.max(80, Math.min(160, node.title.length * 8 + 24));
+        let minX = node.targetX - catPillWidth / 2 - 20;
+        let maxX = node.targetX + catPillWidth / 2 + 20;
+        let minY = node.targetY - 35;
+        let maxY = node.targetY + 35;
+
+        children.forEach(c => {
+          const hours = (c.directMinutes || 0) > 0;
+          const childPillWidth = Math.max(60, Math.min(190, c.title.length * 7.5 + (hours ? 45 : 22)));
+          const halfW = childPillWidth / 2 + 25;
+          minX = Math.min(minX, c.targetX - halfW);
+          maxX = Math.max(maxX, c.targetX + halfW);
+          minY = Math.min(minY, c.targetY - 35);
+          maxY = Math.max(maxY, c.targetY + 35);
+        });
+
+        // Geometric center of the entire cluster
+        const clusterCenterX = (minX + maxX) / 2;
+        const clusterCenterY = (minY + maxY) / 2;
+
+        // Balanced composition: 55% weighted toward category joint, 45% toward cluster center
+        // Ensures the category node itself remains visually central and focal, not shoved to the edge
+        const centerWorldX = node.targetX * 0.55 + clusterCenterX * 0.45;
+        const centerWorldY = node.targetY * 0.55 + clusterCenterY * 0.45;
+
+        return {
+          centerWorldX,
+          centerWorldY,
+          bounds: { minX, maxX, minY, maxY },
+          isCluster: true
+        };
+      }
+    }
+
+    // Individual task or leaf branch: frame with comfortable margin around node and label
+    const hours = (node.directMinutes || 0) > 0;
+    const pillWidth = node.type === 'category'
+      ? Math.max(80, Math.min(160, node.title.length * 8 + 24))
+      : Math.max(60, Math.min(190, node.title.length * 7.5 + (hours ? 45 : 22)));
+
+    const halfW = pillWidth / 2 + 35;
+
+    return {
+      centerWorldX: node.targetX,
+      centerWorldY: node.targetY,
+      bounds: {
+        minX: node.targetX - halfW,
+        maxX: node.targetX + halfW,
+        minY: node.targetY - 50,
+        maxY: node.targetY + 50
+      },
+      isCluster: false
+    };
   }
 }

@@ -47,6 +47,8 @@ interface TaskContextType {
   activeTimer: ActiveTimerState | null;
   setActiveTimer: (timer: ActiveTimerState | null) => Promise<void>;
   cameraController: CameraController;
+  flyToTask: (taskId: string, onComplete?: () => void) => void;
+  registerFlyToHandler: (handler: (taskId: string, onComplete?: () => void) => void) => () => void;
   isLoading: boolean;
 }
 
@@ -64,6 +66,26 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Botanical AI Orchestrator instance
   const aiOrchestrator = useMemo(() => new AIOrchestrator(), []);
+
+  // Fly-to camera coordinate delegation handler
+  const flyToHandlerRef = React.useRef<((taskId: string, onComplete?: () => void) => void) | null>(null);
+
+  const registerFlyToHandler = useCallback((handler: (taskId: string, onComplete?: () => void) => void) => {
+    flyToHandlerRef.current = handler;
+    return () => {
+      if (flyToHandlerRef.current === handler) {
+        flyToHandlerRef.current = null;
+      }
+    };
+  }, []);
+
+  const flyToTask = useCallback((taskId: string, onComplete?: () => void) => {
+    if (flyToHandlerRef.current) {
+      flyToHandlerRef.current(taskId, onComplete);
+    } else {
+      if (onComplete) onComplete();
+    }
+  }, []);
 
   // Initial load from storage adapter
   useEffect(() => {
@@ -675,6 +697,8 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
         activeTimer,
         setActiveTimer,
         cameraController,
+        flyToTask,
+        registerFlyToHandler,
         isLoading
       }}
     >

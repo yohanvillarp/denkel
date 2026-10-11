@@ -12,7 +12,12 @@ export const TreeCanvas: React.FC = () => {
   const saveCameraTimerRef = useRef<number | null>(null);
   const initialFrameDoneRef = useRef<boolean>(false);
 
-  const { tasks, selectedTaskId, setSelectedTaskId, cameraController } = useTaskContext();
+  const { tasks, selectedTaskId, setSelectedTaskId, cameraController, registerFlyToHandler } = useTaskContext();
+  const selectedTaskIdRef = useRef<string | null>(selectedTaskId);
+
+  useEffect(() => {
+    selectedTaskIdRef.current = selectedTaskId;
+  }, [selectedTaskId]);
 
   // Initialize Canvas and Renderer
   useEffect(() => {
@@ -41,6 +46,41 @@ export const TreeCanvas: React.FC = () => {
           ctx.scale(dpr, dpr);
         }
       }
+
+      // If a task or category is currently selected, keep it comfortably framed in updated visible area
+      if (selectedTaskIdRef.current && rendererRef.current) {
+        const framing = rendererRef.current.getTaskFraming(selectedTaskIdRef.current);
+        if (framing) {
+          const headerH = 56;
+          const drawerW = displayWidth >= 640 ? 420 : 0;
+          const visibleW = Math.max(260, displayWidth - drawerW);
+          const visibleH = Math.max(260, displayHeight - headerH);
+          const targetScreenX = visibleW / 2;
+          const targetScreenY = headerH + visibleH / 2;
+
+          if (framing.isCluster && framing.bounds) {
+            cameraController.fitToBounds(
+              framing.bounds,
+              displayWidth,
+              displayHeight,
+              75,
+              false,
+              0,
+              undefined,
+              targetScreenX,
+              targetScreenY,
+              visibleW,
+              visibleH,
+              framing.centerWorldX,
+              framing.centerWorldY
+            );
+          } else {
+            cameraController.panX = targetScreenX - framing.centerWorldX * cameraController.zoom;
+            cameraController.panY = targetScreenY - framing.centerWorldY * cameraController.zoom;
+          }
+        }
+      }
+
       renderer.render();
     };
 
@@ -120,6 +160,70 @@ export const TreeCanvas: React.FC = () => {
       });
     }
   }, [tasks, selectedTaskId, setSelectedTaskId]);
+
+  // Register fly-to camera navigation handler for search and guided flight
+  useEffect(() => {
+    return registerFlyToHandler((taskId: string, onComplete?: () => void) => {
+      if (!rendererRef.current) {
+        if (onComplete) onComplete();
+        return;
+      }
+
+      const framing = rendererRef.current.getTaskFraming(taskId);
+      if (!framing) {
+        if (onComplete) onComplete();
+        return;
+      }
+
+      const screenW = window.innerWidth;
+      const screenH = window.innerHeight;
+      const headerH = 56;
+
+      // Drawer takes 420px on screens >= 640px (sm breakpoint)
+      const drawerW = screenW >= 640 ? 420 : 0;
+
+      // Actual visible canvas area excluding header and drawer
+      const visibleW = Math.max(260, screenW - drawerW);
+      const visibleH = Math.max(260, screenH - headerH);
+
+      // Precise center of the visible canvas area
+      const targetScreenX = visibleW / 2;
+      const targetScreenY = headerH + visibleH / 2;
+
+      if (framing.isCluster && framing.bounds) {
+        // Fit cluster bounds inside the visible area with comfortable padding
+        // and center biased toward the category joint so it stays focal
+        cameraController.fitToBounds(
+          framing.bounds,
+          screenW,
+          screenH,
+          75, // padding
+          true, // animate
+          650, // duration
+          onComplete,
+          targetScreenX,
+          targetScreenY,
+          visibleW,
+          visibleH,
+          framing.centerWorldX,
+          framing.centerWorldY
+        );
+      } else {
+        // Individual task: fly to center of visible area with comfortable reading zoom (1.18)
+        cameraController.flyTo(
+          framing.centerWorldX,
+          framing.centerWorldY,
+          screenW,
+          screenH,
+          1.18,
+          650,
+          onComplete,
+          targetScreenX,
+          targetScreenY
+        );
+      }
+    });
+  }, [registerFlyToHandler, cameraController]);
 
   // Mouse / Touch Event Handlers
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {

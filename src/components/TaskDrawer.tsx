@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTaskContext } from '../context/TaskContext';
-import { TaskStatus } from '../types/task';
+import { TaskStatus, TaskNode, SessionLog } from '../types/task';
 import {
   X,
   Play,
@@ -30,8 +30,9 @@ interface TaskDrawerProps {
 export const TaskDrawer: React.FC<TaskDrawerProps> = ({ onStartTimer }) => {
   const {
     tasks,
+    selectedTaskId,
     setSelectedTaskId,
-    selectedTask,
+    selectedTask: contextSelectedTask,
     updateTaskStatus,
     logTime,
     updateSession,
@@ -70,11 +71,26 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({ onStartTimer }) => {
   // Custom parent branch selection dropdown state
   const [isParentDropdownOpen, setIsParentDropdownOpen] = useState(false);
 
-  if (!selectedTask) return null;
+  // Retain last selected task during exit animation so content doesn't abruptly vanish
+  const [cachedTask, setCachedTask] = useState<TaskNode | null>(contextSelectedTask);
+
+  useEffect(() => {
+    if (contextSelectedTask) {
+      setCachedTask(contextSelectedTask);
+    }
+  }, [contextSelectedTask]);
+
+  // Derive active task, falling back to cachedTask during exit transition
+  const activeTask = contextSelectedTask || (cachedTask ? tasks.find(t => t.id === cachedTask.id) || cachedTask : null);
+  const isOpen = Boolean(selectedTaskId && activeTask);
+
+  if (!activeTask) return null;
+
+  const selectedTask = activeTask;
 
   const isCategory = selectedTask.type === 'category';
   const isBloomed = selectedTask.status === 'completed';
-  const hasAccumulatedEffort = (selectedTask.directMinutes || 0) > 0 || (selectedTask.sessionHistory || []).some(s => s.durationMinutes > 0);
+  const hasAccumulatedEffort = (selectedTask.directMinutes || 0) > 0 || (selectedTask.sessionHistory || []).some((s: SessionLog) => s.durationMinutes > 0);
 
   // Compute breadcrumb path
   const getBreadcrumbPath = (): string => {
@@ -201,7 +217,14 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({ onStartTimer }) => {
   };
 
   return (
-    <aside className="fixed top-14 right-0 bottom-0 w-full sm:w-[420px] bg-white border-l border-[#e8efe8] shadow-[-8px_0_30px_rgba(16,91,56,0.04)] z-40 flex flex-col transition-all duration-300 ease-in-out">
+    <aside
+      id="task-details-drawer"
+      className={`fixed top-14 right-0 bottom-0 w-full sm:w-[420px] bg-white border-l border-[#e8efe8] z-40 flex flex-col transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+        isOpen
+          ? 'translate-x-0 opacity-100 shadow-[-8px_0_30px_rgba(16,91,56,0.08)] pointer-events-auto'
+          : 'translate-x-full opacity-0 shadow-none pointer-events-none'
+      }`}
+    >
       {/* Header: Breadcrumbs & Close */}
       <div className="px-6 py-4 border-b border-[#f0f4f1] flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2 overflow-hidden">
@@ -706,7 +729,7 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({ onStartTimer }) => {
               </div>
             ) : (
               <div className="space-y-2">
-                {(selectedTask.sessionHistory || []).map((session, sIdx) => {
+                {(selectedTask.sessionHistory || []).map((session: SessionLog, sIdx: number) => {
                   const defaultTitle = session.note || `Session ${(selectedTask.sessionHistory || []).length - sIdx}`;
                   const isEditing = editingSessionId === session.id;
 
