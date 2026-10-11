@@ -29,7 +29,7 @@ Build mode: learn
   Learner check: Click a branch to open its details drawer, start the focus timer for a few seconds or manually log 1 hour, then close the drawer to watch the branch visibly thicken and develop.
   Commit: `Add task details drawer, focus timer, and effort-driven branch growth`
 
-- [ ] **3. Dynamic tree restructuring, category promotion, and layout animation**
+- [x] **3. Dynamic tree restructuring, category promotion, and layout animation**
   Becomes usable: Direct mechanical operations to create higher-level umbrella categories, reparent existing branches/subtrees, and dynamically recalculate collision-free coordinates via `D3TreeLayoutEngine` with smooth branch transition animations. All task data, parent pointers, and logged hours remain strictly preserved with cycle prevention.
   Why now: Validates the structural mutation and layout transition pipeline independently of any AI logic, ensuring that moving branches and creating parent umbrellas is rock-solid and visually seamless before wiring the LLM.
   PRD ref: `prd.md > The Core Journey` (step 3), `prd.md > Organic Expansion & Categorization`

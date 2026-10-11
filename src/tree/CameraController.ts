@@ -25,12 +25,21 @@ export class CameraController {
 
   private onChangeCallbacks: Set<() => void> = new Set();
 
-  private animationFrameId: number | null = null;
+  // Flight animation (flyTo) frame ID
+  private flightAnimationId: number | null = null;
+
+  // Smooth continuous zoom animation state
+  private targetZoom: number = 1.0;
+  private zoomAnchorScreen: Point = { x: 0, y: 0 };
+  private zoomAnchorWorld: Point = { x: 0, y: 0 };
+  private zoomAnimationId: number | null = null;
+  private lastZoomTime: number = 0;
 
   constructor(initialPanX: number = 0, initialPanY: number = 0, initialZoom: number = 1.0) {
     this.panX = initialPanX;
     this.panY = initialPanY;
     this.zoom = initialZoom;
+    this.targetZoom = initialZoom;
   }
 
   public subscribe(cb: () => void): () => void {
@@ -79,32 +88,122 @@ export class CameraController {
     this.isDragging = false;
   }
 
-  public handleZoom(delta: number, screenCenter: Point): void {
-    this.cancelAnimation();
-    const zoomFactor = delta > 0 ? 0.9 : 1.1;
-    const newZoom = Math.min(this.maxZoom, Math.max(this.minZoom, this.zoom * zoomFactor));
+  /**
+   * Smooth cursor-anchored zoom animation.
+   * Keeps the world coordinate underneath screenPoint visually stationary.
+   * Repeated scrolling or consecutive clicks continuously update targetZoom
+   * without restarting the animation or causing jumps.
+   */
+  public smoothZoom(delta: number, screenPoint: Point): void {
+    // Stop flight animations if active
+    if (this.flightAnimationId !== null) {
+      cancelAnimationFrame(this.flightAnimationId);
+      this.flightAnimationId = null;
+    }
 
-    if (newZoom === this.zoom) return;
+    // Normalized zoom factor: responsive and proportional
+    const normalizedDelta = Math.max(-140, Math.min(140, delta));
+    const factor = Math.pow(0.9984, normalizedDelta);
 
-    // Zoom centered on the cursor
-    const mouseWorldX = (screenCenter.x - this.panX) / this.zoom;
-    const mouseWorldY = (screenCenter.y - this.panY) / this.zoom;
+    // Anchor the zoom to the exact point underneath the cursor/screenPoint
+    this.zoomAnchorScreen = { x: screenPoint.x, y: screenPoint.y };
+    this.zoomAnchorWorld = this.screenToWorld(screenPoint.x, screenPoint.y);
 
-    this.zoom = newZoom;
-    this.panX = screenCenter.x - mouseWorldX * this.zoom;
-    this.panY = screenCenter.y - mouseWorldY * this.zoom;
+    // Continuously accumulate the target zoom
+    const baseTarget = this.zoomAnimationId !== null ? this.targetZoom : this.zoom;
+    this.targetZoom = Math.min(this.maxZoom, Math.max(this.minZoom, baseTarget * factor));
 
-    this.notify();
+    if (this.zoomAnimationId === null) {
+      this.lastZoomTime = performance.now();
+      this.runZoomAnimation();
+    }
   }
+
+  // Backward compatibility alias for smoothZoom
+  public handleZoom(delta: number, screenCenter: Point): void {
+    this.smoothZoom(delta, screenCenter);
+  }
+
+  /**
+   * Smooth zoom-in toward viewport center
+   */
+  public zoomIn(viewportCenter: Point): void {
+    this.smoothZoom(-80, viewportCenter);
+  }
+
+  /**
+   * Smooth zoom-out toward viewport center
+   */
+  public zoomOut(viewportCenter: Point): void {
+    this.smoothZoom(80, viewportCenter);
+  }
+
+  private runZoomAnimation = (): void => {
+    const now = performance.now();
+    const dt = Math.min(32, Math.max(1, now - this.lastZoomTime));
+    this.lastZoomTime = now;
+
+    // Snappy, critically-damped exponential step (~180ms to settle)
+    const step = 1 - Math.exp(-dt * 0.016);
+    const diff = this.targetZoom - this.zoom;
+
+    if (Math.abs(diff) < 0.0008) {
+      this.zoom = this.targetZoom;
+      this.panX = this.zoomAnchorScreen.x - this.zoomAnchorWorld.x * this.zoom;
+      this.panY = this.zoomAnchorScreen.y - this.zoomAnchorWorld.y * this.zoom;
+      this.zoomAnimationId = null;
+      this.notify();
+      return;
+    }
+
+    this.zoom += diff * step;
+    // Keep the anchored world coordinate strictly under the screen point
+    this.panX = this.zoomAnchorScreen.x - this.zoomAnchorWorld.x * this.zoom;
+    this.panY = this.zoomAnchorScreen.y - this.zoomAnchorWorld.y * this.zoom;
+    this.notify();
+
+    this.zoomAnimationId = requestAnimationFrame(this.runZoomAnimation);
+  };
 
   public setCenter(worldX: number, worldY: number, screenWidth: number, screenHeight: number, targetZoom?: number): void {
     this.cancelAnimation();
     if (targetZoom !== undefined) {
       this.zoom = Math.min(this.maxZoom, Math.max(this.minZoom, targetZoom));
+      this.targetZoom = this.zoom;
     }
     this.panX = screenWidth / 2 - worldX * this.zoom;
     this.panY = screenHeight / 2 - worldY * this.zoom;
     this.notify();
+  }
+
+  public fitToBounds(
+    bounds: { minX: number; maxX: number; minY: number; maxY: number },
+    screenWidth: number,
+    screenHeight: number,
+    padding: number = 90,
+    animate: boolean = false,
+    durationMs: number = 600,
+    onComplete?: () => void
+  ): void {
+    const boundsWidth = Math.max(120, bounds.maxX - bounds.minX);
+    const boundsHeight = Math.max(120, bounds.maxY - bounds.minY);
+
+    const availWidth = Math.max(120, screenWidth - padding * 2);
+    const availHeight = Math.max(120, screenHeight - padding * 2);
+
+    const fitZoom = Math.min(
+      1.15,
+      Math.max(this.minZoom, Math.min(availWidth / boundsWidth, availHeight / boundsHeight))
+    );
+
+    const centerWorldX = (bounds.minX + bounds.maxX) / 2;
+    const centerWorldY = (bounds.minY + bounds.maxY) / 2;
+
+    if (animate) {
+      this.flyTo(centerWorldX, centerWorldY, screenWidth, screenHeight, fitZoom, durationMs, onComplete);
+    } else {
+      this.setCenter(centerWorldX, centerWorldY, screenWidth, screenHeight, fitZoom);
+    }
   }
 
   public flyTo(
@@ -144,21 +243,27 @@ export class CameraController {
       this.notify();
 
       if (progress < 1) {
-        this.animationFrameId = requestAnimationFrame(animate);
+        this.flightAnimationId = requestAnimationFrame(animate);
       } else {
-        this.animationFrameId = null;
+        this.flightAnimationId = null;
+        this.targetZoom = this.zoom;
         if (onComplete) onComplete();
       }
     };
 
-    this.animationFrameId = requestAnimationFrame(animate);
+    this.flightAnimationId = requestAnimationFrame(animate);
   }
 
   public cancelAnimation(): void {
-    if (this.animationFrameId !== null) {
-      cancelAnimationFrame(this.animationFrameId);
-      this.animationFrameId = null;
+    if (this.flightAnimationId !== null) {
+      cancelAnimationFrame(this.flightAnimationId);
+      this.flightAnimationId = null;
     }
+    if (this.zoomAnimationId !== null) {
+      cancelAnimationFrame(this.zoomAnimationId);
+      this.zoomAnimationId = null;
+    }
+    this.targetZoom = this.zoom;
   }
 
   public getState(): CameraState {
@@ -167,5 +272,14 @@ export class CameraController {
       panY: this.panY,
       zoom: this.zoom
     };
+  }
+
+  public setState(state: CameraState): void {
+    this.cancelAnimation();
+    this.panX = state.panX;
+    this.panY = state.panY;
+    this.zoom = state.zoom;
+    this.targetZoom = state.zoom;
+    this.notify();
   }
 }

@@ -1,5 +1,7 @@
 import { TaskNode } from '../types/task';
 import { CameraController } from './CameraController';
+import { ITreeLayoutEngine } from './ITreeLayoutEngine';
+import { D3TreeLayoutEngine } from './D3TreeLayoutEngine';
 
 export interface RenderNode {
   id: string;
@@ -26,12 +28,19 @@ export interface RenderNode {
   // Animation state
   radius: number;
   sproutProgress: number; // 0 to 1
+
+  // Migration states for reparenting
+  isMigrating: boolean;
+  migrationProgress: number; // 0 to 1
+  previousOriginX: number;
+  previousOriginY: number;
 }
 
 export class TreeRenderer {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private camera: CameraController;
+  private layoutEngine: ITreeLayoutEngine;
   private nodes: Map<string, RenderNode> = new Map();
   private selectedTaskId: string | null = null;
   private hoveredTaskId: string | null = null;
@@ -53,7 +62,7 @@ export class TreeRenderer {
   private readonly COLOR_TEXT_CATEGORY = '#1b4d3e';
   private readonly COLOR_TEXT_MUTED = '#526358';
 
-  constructor(canvas: HTMLCanvasElement, camera: CameraController) {
+  constructor(canvas: HTMLCanvasElement, camera: CameraController, layoutEngine?: ITreeLayoutEngine) {
     this.canvas = canvas;
     const context = canvas.getContext('2d');
     if (!context) {
@@ -61,6 +70,7 @@ export class TreeRenderer {
     }
     this.ctx = context;
     this.camera = camera;
+    this.layoutEngine = layoutEngine || new D3TreeLayoutEngine();
   }
 
   public setSelectedTask(taskId: string | null): void {
@@ -95,8 +105,8 @@ export class TreeRenderer {
       return total;
     };
 
-    // Calculate natural, asymmetrical organic layout positions
-    const positions = this.calculateOrganicPositions(taskList);
+    // Calculate natural, non-overlapping organic layout positions using D3 engine
+    const positions = this.layoutEngine.calculateLayout(taskList);
 
     taskList.forEach(task => {
       existingIds.add(task.id);
@@ -111,6 +121,21 @@ export class TreeRenderer {
 
       if (this.nodes.has(task.id)) {
         const node = this.nodes.get(task.id)!;
+
+        // Detect reparenting: trigger organic migration animation
+        if (node.parentId !== task.parentId) {
+          node.isMigrating = true;
+          node.migrationProgress = 0;
+          if (node.parentId && this.nodes.has(node.parentId)) {
+            const oldParent = this.nodes.get(node.parentId)!;
+            node.previousOriginX = oldParent.currentX;
+            node.previousOriginY = oldParent.currentY;
+          } else {
+            node.previousOriginX = node.originX;
+            node.previousOriginY = node.originY;
+          }
+        }
+
         node.title = task.title;
         node.parentId = task.parentId;
         node.status = task.status;
@@ -139,8 +164,12 @@ export class TreeRenderer {
           originX: computed.originX,
           originY: computed.originY,
           labelPlacement: computed.placement,
-          radius: task.type === 'category' ? 4 : 6,
-          sproutProgress: 0
+          radius: task.type === 'category' ? 5 : 6,
+          sproutProgress: 0,
+          isMigrating: false,
+          migrationProgress: 1,
+          previousOriginX: computed.originX,
+          previousOriginY: computed.originY
         });
       }
     });
@@ -153,120 +182,26 @@ export class TreeRenderer {
     }
   }
 
-  /**
-   * Deterministic Asymmetric Botanical Layout
-   * Staggers branching heights along the trunk, uses natural organic arching,
-   * and staggers label positioning to prevent collisions.
-   */
-  private calculateOrganicPositions(tasks: TaskNode[]): Map<string, {
-    x: number;
-    y: number;
-    originX: number;
-    originY: number;
-    placement: 'top' | 'bottom' | 'left' | 'right';
-  }> {
-    const posMap = new Map<string, {
-      x: number;
-      y: number;
-      originX: number;
-      originY: number;
-      placement: 'top' | 'bottom' | 'left' | 'right';
-    }>();
+  public getTreeBounds(): { minX: number; maxX: number; minY: number; maxY: number } {
+    let minX = -130;
+    let maxX = 130;
+    let minY = -210;
+    let maxY = 35; // base soil
 
-    const roots = tasks.filter(t => !t.parentId);
-    const byParent = new Map<string, TaskNode[]>();
-    tasks.forEach(t => {
-      if (t.parentId) {
-        const arr = byParent.get(t.parentId) || [];
-        arr.push(t);
-        byParent.set(t.parentId, arr);
-      }
+    this.nodes.forEach(node => {
+      const isCategory = node.type === 'category';
+      const pillWidth = isCategory
+        ? Math.max(80, node.title.length * 8 + 24)
+        : Math.max(70, node.title.length * 8.2 + 45);
+      const halfPill = pillWidth / 2 + 15;
+
+      minX = Math.min(minX, node.currentX - halfPill, node.targetX - halfPill);
+      maxX = Math.max(maxX, node.currentX + halfPill, node.targetX + halfPill);
+      minY = Math.min(minY, node.currentY - 35, node.targetY - 35);
+      maxY = Math.max(maxY, node.currentY + 30, node.targetY + 30);
     });
 
-    // Asymmetric branch configuration presets for primary stems along the trunk
-    // Trunk runs from y = 0 to y = -180.
-    // Different branches emerge at distinct, staggered heights!
-    const branchSlots = [
-      // 0: Lower-left branch (emerges low, reaches wide left)
-      { originY: -85, angle: -Math.PI * 0.78, length: 185, placement: 'left' as const },
-      // 1: Mid-right branch (emerges middle, reaches high right)
-      { originY: -125, angle: -Math.PI * 0.22, length: 195, placement: 'right' as const },
-      // 2: Upper-left branch (emerges higher, reaches steep upper-left)
-      { originY: -155, angle: -Math.PI * 0.62, length: 165, placement: 'top' as const },
-      // 3: Crown-top branch (emerges near apex, reaches upper center)
-      { originY: -180, angle: -Math.PI * 0.46, length: 155, placement: 'top' as const },
-      // 4: Lower-right branch (emerges low, reaches wide right)
-      { originY: -95, angle: -Math.PI * 0.16, length: 175, placement: 'right' as const },
-      // 5: Steep-right branch
-      { originY: -145, angle: -Math.PI * 0.35, length: 160, placement: 'top' as const },
-      // 6: Deep-left branch
-      { originY: -115, angle: -Math.PI * 0.88, length: 150, placement: 'left' as const },
-    ];
-
-    roots.forEach((root, idx) => {
-      const slot = branchSlots[idx % branchSlots.length];
-      // Slight index-based deterministic length shift
-      const lengthShift = ((idx * 17) % 25) - 12;
-      const actualLength = slot.length + lengthShift;
-
-      // Calculate trunk curvature at originY
-      const originX = Math.sin((slot.originY / -180) * Math.PI) * 4;
-      const targetX = originX + Math.cos(slot.angle) * actualLength;
-      const targetY = slot.originY + Math.sin(slot.angle) * actualLength;
-
-      posMap.set(root.id, {
-        x: targetX,
-        y: targetY,
-        originX,
-        originY: slot.originY,
-        placement: slot.placement
-      });
-
-      // Layout children / sub-branches recursively
-      this.layoutChildren(root.id, targetX, targetY, slot.angle, byParent, posMap, 1);
-    });
-
-    return posMap;
-  }
-
-  private layoutChildren(
-    parentId: string,
-    parentX: number,
-    parentY: number,
-    parentAngle: number,
-    byParent: Map<string, TaskNode[]>,
-    posMap: Map<string, { x: number; y: number; originX: number; originY: number; placement: 'top' | 'bottom' | 'left' | 'right' }>,
-    depth: number
-  ): void {
-    const children = byParent.get(parentId) || [];
-    if (children.length === 0) return;
-
-    const count = children.length;
-    // Sub-branches spread gracefully with staggered lengths
-    const fanSpread = Math.min(Math.PI * 0.55, 0.28 + count * 0.14);
-    const startAngle = parentAngle - fanSpread / 2;
-    const angleStep = count > 1 ? fanSpread / (count - 1) : 0;
-
-    children.forEach((child, i) => {
-      const angle = count === 1 ? parentAngle + (i % 2 === 0 ? 0.12 : -0.12) : startAngle + i * angleStep;
-      // Stagger child lengths to avoid circular ring collisions
-      const length = Math.max(75, 125 - depth * 20 + ((i * 19) % 30) - 15);
-      const cx = parentX + Math.cos(angle) * length;
-      const cy = parentY + Math.sin(angle) * length;
-
-      // Determine label placement: alternate top/bottom to prevent overlapping labels
-      const placement: 'top' | 'bottom' | 'left' | 'right' = i % 2 === 0 ? 'top' : 'bottom';
-
-      posMap.set(child.id, {
-        x: cx,
-        y: cy,
-        originX: parentX,
-        originY: parentY,
-        placement
-      });
-
-      this.layoutChildren(child.id, cx, cy, angle, byParent, posMap, depth + 1);
-    });
+    return { minX, maxX, minY, maxY };
   }
 
   public start(): void {
@@ -303,7 +238,14 @@ export class TreeRenderer {
       node.currentY += (node.targetY - node.currentY) * lerpSpeed;
 
       if (node.sproutProgress < 1) {
-        node.sproutProgress = Math.min(1, node.sproutProgress + 0.06 * (dt / 16.6));
+        node.sproutProgress = Math.min(1, node.sproutProgress + 0.05 * (dt / 16.6));
+      }
+
+      if (node.isMigrating) {
+        node.migrationProgress = Math.min(1, node.migrationProgress + 0.04 * (dt / 16.6));
+        if (node.migrationProgress >= 1) {
+          node.isMigrating = false;
+        }
       }
     });
   }
@@ -328,7 +270,7 @@ export class TreeRenderer {
     // Organic tapered trunk
     this.renderTrunk(ctx);
 
-    // Curved botanical branches (delicate, proportional thickness)
+    // Curved botanical branches (with migration disconnect/reconnect transitions)
     this.renderBranches(ctx);
 
     // Interactive nodes (differentiated: category streams vs actionable tasks)
@@ -353,44 +295,38 @@ export class TreeRenderer {
 
   private renderTrunk(ctx: CanvasRenderingContext2D): void {
     ctx.save();
+    const trunkGradient = ctx.createLinearGradient(0, 10, 0, -185);
+    trunkGradient.addColorStop(0, this.COLOR_TRUNK_BASE);
+    trunkGradient.addColorStop(0.5, '#0c5237');
+    trunkGradient.addColorStop(1, this.COLOR_TRUNK_TOP);
 
-    // Organic tapered trunk rising from (0, 12) up to (0, -180)
-    // Tapers naturally: 10px base -> 4px at crown
-    const gradient = ctx.createLinearGradient(0, 12, 0, -180);
-    gradient.addColorStop(0, this.COLOR_TRUNK_BASE);
-    gradient.addColorStop(0.6, this.COLOR_TRUNK_TOP);
-    gradient.addColorStop(1, this.COLOR_BRANCH);
-
-    ctx.strokeStyle = gradient;
-    ctx.fillStyle = gradient;
-    ctx.lineCap = 'round';
-    ctx.lineWidth = 7;
-
+    ctx.fillStyle = trunkGradient;
     ctx.beginPath();
-    ctx.moveTo(0, 12);
-    // Subtle natural S-curve sway
-    ctx.bezierCurveTo(-6, -50, 6, -110, 0, -180);
+    ctx.moveTo(-10, 10);
+    ctx.quadraticCurveTo(-7, -80, -3.5, -180);
+    ctx.lineTo(3.5, -180);
+    ctx.quadraticCurveTo(7, -80, 10, 10);
+    ctx.closePath();
+    ctx.fill();
+
+    // Natural wood grain texture lines
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(-2, 8);
+    ctx.quadraticCurveTo(-1, -60, 0, -170);
     ctx.stroke();
 
-    // If tree is completely empty, draw tender seedling sprout at the tip
-    if (this.nodes.size === 0) {
-      // Tender young leaves
-      ctx.fillStyle = this.COLOR_LEAF;
-      ctx.beginPath();
-      ctx.ellipse(-10, -188, 12, 6, -Math.PI / 4, 0, Math.PI * 2);
-      ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(3, 8);
+    ctx.quadraticCurveTo(2, -70, 1.5, -150);
+    ctx.stroke();
 
-      ctx.beginPath();
-      ctx.ellipse(10, -188, 12, 6, Math.PI / 4, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Tender center sprout bud
-      ctx.fillStyle = this.COLOR_BUD;
-      ctx.beginPath();
-      ctx.arc(0, -184, 4, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
+    // Trunk apex node
+    ctx.fillStyle = this.COLOR_TRUNK_TOP;
+    ctx.beginPath();
+    ctx.arc(0, -180, 3.5, 0, Math.PI * 2);
+    ctx.fill();
     ctx.restore();
   }
 
@@ -400,16 +336,10 @@ export class TreeRenderer {
     ctx.lineJoin = 'round';
 
     this.nodes.forEach(node => {
-      const startX = node.originX;
-      const startY = node.originY;
-
-      // Base branch thickness starts delicate (1.8px - 2.2px)
-      // Gradually thickens with accumulated time, capped at 4.5px
       const baseThickness = node.type === 'category' ? 2.5 : 2.0;
       const effortThickening = Math.min(2.5, Math.log1p(node.totalMinutes) * 0.45);
       const branchWidth = baseThickness + effortThickening;
 
-      // Branch color: categories are deep forest; tasks are emerald/foliage
       let strokeColor = this.COLOR_BRANCH;
       if (node.status === 'completed') {
         strokeColor = this.COLOR_LEAF;
@@ -420,25 +350,92 @@ export class TreeRenderer {
       ctx.strokeStyle = strokeColor;
       ctx.lineWidth = branchWidth;
 
-      // Organic curved branch line
-      ctx.beginPath();
-      ctx.moveTo(startX, startY);
+      // Handle migration transition (disconnect old parent, connect new parent)
+      if (node.isMigrating && node.migrationProgress < 1) {
+        // 1. Old connection gradually retracts toward old origin and fades
+        const retractP = 1 - node.migrationProgress;
+        if (retractP > 0.02) {
+          ctx.save();
+          ctx.globalAlpha = retractP * 0.7;
+          ctx.strokeStyle = strokeColor;
+          ctx.lineWidth = branchWidth * retractP;
 
-      // Interpolated tip for smooth sprouting animation
+          const oldOriginX = node.previousOriginX;
+          const oldOriginY = node.previousOriginY;
+          const oldTipX = oldOriginX + (node.currentX - oldOriginX) * retractP;
+          const oldTipY = oldOriginY + (node.currentY - oldOriginY) * retractP;
+
+          const midX = (oldOriginX + oldTipX) / 2;
+          const midY = (oldOriginY + oldTipY) / 2;
+          const dx = oldTipX - oldOriginX;
+          const dy = oldTipY - oldOriginY;
+          const cpX = midX - dy * 0.12;
+          const cpY = midY + dx * 0.12;
+
+          ctx.beginPath();
+          ctx.moveTo(oldOriginX, oldOriginY);
+          ctx.quadraticCurveTo(cpX, cpY, oldTipX, oldTipY);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // 2. New connection smoothly grows from new parent toward the migrating node
+        const growP = node.migrationProgress;
+        if (growP > 0.02) {
+          ctx.save();
+          ctx.globalAlpha = Math.min(1, growP * 1.4);
+          ctx.strokeStyle = strokeColor;
+          ctx.lineWidth = branchWidth;
+
+          let newOriginX = node.originX;
+          let newOriginY = node.originY;
+          if (node.parentId && this.nodes.has(node.parentId)) {
+            const parentNode = this.nodes.get(node.parentId)!;
+            newOriginX = parentNode.currentX;
+            newOriginY = parentNode.currentY;
+          }
+
+          const newTipX = newOriginX + (node.currentX - newOriginX) * growP;
+          const newTipY = newOriginY + (node.currentY - newOriginY) * growP;
+
+          const midX = (newOriginX + newTipX) / 2;
+          const midY = (newOriginY + newTipY) / 2;
+          const dx = newTipX - newOriginX;
+          const dy = newTipY - newOriginY;
+          const cpX = midX - dy * 0.12;
+          const cpY = midY + dx * 0.12;
+
+          ctx.beginPath();
+          ctx.moveTo(newOriginX, newOriginY);
+          ctx.quadraticCurveTo(cpX, cpY, newTipX, newTipY);
+          ctx.stroke();
+          ctx.restore();
+        }
+        return;
+      }
+
+      // Standard organic branch rendering
+      let startX = node.originX;
+      let startY = node.originY;
+      if (node.parentId && this.nodes.has(node.parentId)) {
+        const parentNode = this.nodes.get(node.parentId)!;
+        startX = parentNode.currentX;
+        startY = parentNode.currentY;
+      }
+
+      // Tip advances with sprouting animation
       const animX = startX + (node.currentX - startX) * node.sproutProgress;
       const animY = startY + (node.currentY - startY) * node.sproutProgress;
 
-      // Natural arch control point
       const midX = (startX + animX) / 2;
       const midY = (startY + animY) / 2;
       const dx = animX - startX;
       const dy = animY - startY;
+      const cpX = midX - dy * 0.12;
+      const cpY = midY + dx * 0.12;
 
-      // Curvature perpendicular to branch vector
-      const curvature = 0.12;
-      const cpX = midX - dy * curvature;
-      const cpY = midY + dx * curvature;
-
+      ctx.beginPath();
+      ctx.moveTo(startX, startY);
       ctx.quadraticCurveTo(cpX, cpY, animX, animY);
       ctx.stroke();
     });
@@ -450,8 +447,7 @@ export class TreeRenderer {
     const zoom = this.camera.zoom;
 
     this.nodes.forEach(node => {
-      // Only render node when sprout animation has progressed
-      if (node.sproutProgress < 0.2) return;
+      if (node.sproutProgress < 0.15) return;
 
       const x = node.currentX;
       const y = node.currentY;
@@ -462,41 +458,71 @@ export class TreeRenderer {
       ctx.translate(x, y);
 
       // ==============================================================
-      // 1. ORGANIZATIONAL CATEGORY: Structural Stream (No pending bud)
+      // 1. ORGANIZATIONAL CATEGORY: Structural Joint & Expanding Aura
       // ==============================================================
       if (node.type === 'category') {
-        // Delicate structural joint node
+        const catRadius = (isSelected ? 6 : 4.5) * node.sproutProgress;
+
+        // Expanding aura when freshly growing
+        if (node.sproutProgress < 0.95) {
+          ctx.fillStyle = 'rgba(16, 91, 56, 0.18)';
+          ctx.beginPath();
+          ctx.arc(0, 0, catRadius + 6 * (1 - node.sproutProgress), 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Structural joint node
         ctx.fillStyle = this.COLOR_TRUNK_TOP;
         ctx.beginPath();
-        ctx.arc(0, 0, isSelected ? 6 : 4, 0, Math.PI * 2);
+        ctx.arc(0, 0, catRadius, 0, Math.PI * 2);
         ctx.fill();
 
         if (isSelected || isHovered) {
-          ctx.strokeStyle = 'rgba(16, 91, 56, 0.4)';
+          ctx.strokeStyle = 'rgba(16, 91, 56, 0.45)';
           ctx.lineWidth = 2;
           ctx.beginPath();
-          ctx.arc(0, 0, 9, 0, Math.PI * 2);
+          ctx.arc(0, 0, catRadius + 5, 0, Math.PI * 2);
           ctx.stroke();
         }
 
-        // Category Stream Label: Elegant, spaced, dignified
-        ctx.font = '600 11px "Plus Jakarta Sans", sans-serif';
-        ctx.fillStyle = this.COLOR_TEXT_CATEGORY;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
+        // Category Stream Label (fades in once branch has reached maturity)
+        if (node.sproutProgress > 0.4) {
+          ctx.font = '600 11px "Plus Jakarta Sans", sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
 
-        const categoryTitle = node.title.toUpperCase();
-        const tagY = node.labelPlacement === 'bottom' ? 18 : -18;
+          let categoryTitle = node.title.toUpperCase();
+          const maxCatWidth = 160;
+          let textWidth = ctx.measureText(categoryTitle).width;
+          if (textWidth > maxCatWidth) {
+            const ellipsis = '...';
+            let low = 0;
+            let high = categoryTitle.length;
+            let best = '';
+            while (low <= high) {
+              const mid = Math.floor((low + high) / 2);
+              const candidate = categoryTitle.slice(0, mid).trimEnd() + ellipsis;
+              if (ctx.measureText(candidate).width <= maxCatWidth) {
+                best = candidate;
+                low = mid + 1;
+              } else {
+                high = mid - 1;
+              }
+            }
+            categoryTitle = best || ellipsis;
+            textWidth = ctx.measureText(categoryTitle).width;
+          }
 
-        // Soft frosted backdrop pill
-        const textWidth = ctx.measureText(categoryTitle).width;
-        ctx.fillStyle = 'rgba(251, 252, 249, 0.92)';
-        ctx.beginPath();
-        ctx.roundRect(-textWidth / 2 - 8, tagY - 10, textWidth + 16, 20, 6);
-        ctx.fill();
+          const tagY = node.labelPlacement === 'bottom' ? 18 : -18;
 
-        ctx.fillStyle = this.COLOR_TEXT_CATEGORY;
-        ctx.fillText(categoryTitle, 0, tagY);
+          ctx.fillStyle = 'rgba(251, 252, 249, 0.94)';
+          ctx.beginPath();
+          ctx.roundRect(-textWidth / 2 - 8, tagY - 10, textWidth + 16, 20, 6);
+          ctx.fill();
+
+          ctx.fillStyle = this.COLOR_TEXT_CATEGORY;
+          ctx.fillText(categoryTitle, 0, tagY);
+        }
 
         ctx.restore();
         return;
@@ -505,9 +531,8 @@ export class TreeRenderer {
       // ==============================================================
       // 2. ACTIONABLE TASK / PROJECT: Bud, In-Progress, or Bloomed Leaf
       // ==============================================================
-      const radius = isSelected ? 10 : isHovered ? 8 : 6;
+      const radius = (isSelected ? 10 : isHovered ? 8 : 6) * node.sproutProgress;
 
-      // Glow / Selection Ring
       if (isSelected || isHovered) {
         ctx.strokeStyle = isSelected ? this.COLOR_LEAF : 'rgba(16, 185, 129, 0.4)';
         ctx.lineWidth = isSelected ? 3 : 2;
@@ -517,7 +542,7 @@ export class TreeRenderer {
       }
 
       if (node.status === 'completed') {
-        // Bloomed Emerald Node
+        // Bloomed Leaf Node
         ctx.fillStyle = this.COLOR_LEAF;
         ctx.beginPath();
         ctx.arc(0, 0, radius, 0, Math.PI * 2);
@@ -548,7 +573,7 @@ export class TreeRenderer {
         ctx.arc(0, 0, radius * 0.45, 0, Math.PI * 2);
         ctx.fill();
       } else {
-        // Pending Amber Bud (Delicate warm resin)
+        // Pending Amber Bud
         ctx.fillStyle = this.COLOR_BUD_AURA;
         ctx.beginPath();
         ctx.arc(0, 0, radius + 3, 0, Math.PI * 2);
@@ -566,27 +591,20 @@ export class TreeRenderer {
       }
 
       // ==============================================================
-      // 3. Staggered Pill Label Tag (Exact User Title Preserved)
+      // 3. Staggered Collision-Free Pill Label Tag
       // ==============================================================
-      const shouldShowLabel = zoom >= 0.5 || !node.parentId || isSelected;
+      const shouldShowLabel = zoom >= 0.45 || !node.parentId || isSelected;
 
-      if (shouldShowLabel) {
-        ctx.font = isSelected ? '600 11.5px Inter, sans-serif' : '500 11px Inter, sans-serif';
-        const exactTitle = node.title;
+      if (shouldShowLabel && node.sproutProgress > 0.4) {
+        const {
+          totalPillWidth,
+          pillHeight,
+          displayTitle,
+          hoursText,
+          titleStartX,
+          paddingRight
+        } = this.calculatePillLayout(ctx, node.title, node.totalMinutes, isSelected);
 
-        // Calculate hours readout if logged
-        const hoursText = node.totalMinutes > 0
-          ? node.totalMinutes >= 60
-            ? `${(node.totalMinutes / 60).toFixed(1)}h`
-            : `${node.totalMinutes}m`
-          : null;
-
-        const textMetrics = ctx.measureText(exactTitle);
-        const titleWidth = textMetrics.width;
-        const totalPillWidth = titleWidth + (hoursText ? 42 : 18);
-        const pillHeight = 22;
-
-        // Staggered tag offset based on node placement
         let pillX = 0;
         let pillY = -24;
 
@@ -605,7 +623,6 @@ export class TreeRenderer {
           pillY = -26;
         }
 
-        // Soft white card with delicate border and shadow
         ctx.fillStyle = '#ffffff';
         ctx.shadowColor = 'rgba(6, 78, 59, 0.08)';
         ctx.shadowBlur = 6;
@@ -620,7 +637,6 @@ export class TreeRenderer {
         ctx.lineWidth = 1;
         ctx.stroke();
 
-        // Status indicator dot inside pill
         const dotColor = node.status === 'completed'
           ? this.COLOR_LEAF
           : node.status === 'in_progress'
@@ -629,21 +645,22 @@ export class TreeRenderer {
 
         ctx.fillStyle = dotColor;
         ctx.beginPath();
-        ctx.arc(pillX + 9, pillY + pillHeight / 2, 2.5, 0, Math.PI * 2);
+        ctx.arc(pillX + 10.5, pillY + pillHeight / 2, 2.5, 0, Math.PI * 2);
         ctx.fill();
 
-        // Exact title text
+        // Exact / truncated title text (guaranteed never to encroach on hours space)
+        ctx.font = isSelected ? '600 11.5px Inter, sans-serif' : '500 11px Inter, sans-serif';
         ctx.fillStyle = this.COLOR_TEXT;
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
-        ctx.fillText(exactTitle, pillX + 16, pillY + pillHeight / 2);
+        ctx.fillText(displayTitle, pillX + titleStartX, pillY + pillHeight / 2);
 
-        // Optional time logged pill badge
+        // Hours indicator (independent dedicated space)
         if (hoursText) {
           ctx.font = '500 9.5px "JetBrains Mono", monospace';
           ctx.fillStyle = this.COLOR_TEXT_MUTED;
           ctx.textAlign = 'right';
-          ctx.fillText(hoursText, pillX + totalPillWidth - 8, pillY + pillHeight / 2);
+          ctx.fillText(hoursText, pillX + totalPillWidth - paddingRight, pillY + pillHeight / 2);
         }
       }
 
@@ -651,10 +668,104 @@ export class TreeRenderer {
     });
   }
 
+  /**
+   * Calculates independent layout bounds for title and hours badge within a pill tag.
+   * Ensures title and time indicator never overlap, dynamically adapting width up to a safe
+   * ceiling and truncating long titles with an ellipsis while keeping the time indicator fully visible.
+   */
+  private calculatePillLayout(
+    ctx: CanvasRenderingContext2D,
+    title: string,
+    totalMinutes: number,
+    isSelected: boolean
+  ): {
+    totalPillWidth: number;
+    pillHeight: number;
+    displayTitle: string;
+    hoursText: string | null;
+    titleStartX: number;
+    paddingRight: number;
+  } {
+    // 1. Format hours indicator cleanly (e.g. "5h", "1.5h", "45m")
+    let hoursText: string | null = null;
+    if (totalMinutes > 0) {
+      if (totalMinutes >= 60) {
+        const hours = totalMinutes / 60;
+        hoursText = hours % 1 === 0 ? `${hours}h` : `${hours.toFixed(1)}h`;
+      } else {
+        hoursText = `${totalMinutes}m`;
+      }
+    }
+
+    const pillHeight = 22;
+    const paddingLeft = 8;
+    const dotRadius = 2.5;
+    const dotSpacing = 6;
+    const titleStartX = paddingLeft + dotRadius * 2 + dotSpacing; // 19px
+    const paddingRight = 9;
+    const minTitleHoursGap = 8; // Strictly reserved buffer between title text and hours badge
+    const minPillWidth = 60;
+    const maxPillWidth = 190; // Natural boundary preventing overlap with neighboring branches
+
+    // 2. Measure hours badge independently
+    let hoursWidth = 0;
+    if (hoursText) {
+      ctx.font = '500 9.5px "JetBrains Mono", monospace';
+      hoursWidth = ctx.measureText(hoursText).width;
+    }
+
+    // 3. Measure title in its exact rendering font
+    ctx.font = isSelected ? '600 11.5px Inter, sans-serif' : '500 11px Inter, sans-serif';
+    const fullTitleWidth = ctx.measureText(title).width;
+
+    // 4. Compute ideal pill width and clamp to bounds
+    const timeSlotWidth = hoursText ? (minTitleHoursGap + hoursWidth) : 0;
+    const contentNeededWidth = titleStartX + fullTitleWidth + timeSlotWidth + paddingRight;
+    const totalPillWidth = Math.max(minPillWidth, Math.min(maxPillWidth, Math.ceil(contentNeededWidth)));
+
+    // 5. Independently compute available title space
+    const availableTitleWidth = totalPillWidth - titleStartX - timeSlotWidth - paddingRight;
+
+    // 6. Ellipsis truncation if title exceeds available space
+    let displayTitle = title;
+    if (fullTitleWidth > availableTitleWidth) {
+      const ellipsis = '...';
+      const ellipsisWidth = ctx.measureText(ellipsis).width;
+
+      if (availableTitleWidth <= ellipsisWidth) {
+        displayTitle = '';
+      } else {
+        let low = 0;
+        let high = title.length;
+        let best = '';
+        while (low <= high) {
+          const mid = Math.floor((low + high) / 2);
+          const prefix = title.slice(0, mid).trimEnd();
+          const candidate = prefix + ellipsis;
+          if (ctx.measureText(candidate).width <= availableTitleWidth) {
+            best = candidate;
+            low = mid + 1;
+          } else {
+            high = mid - 1;
+          }
+        }
+        displayTitle = best || ellipsis;
+      }
+    }
+
+    return {
+      totalPillWidth,
+      pillHeight,
+      displayTitle,
+      hoursText,
+      titleStartX,
+      paddingRight
+    };
+  }
+
   public hitTest(worldX: number, worldY: number): string | null {
     const nodeArray = Array.from(this.nodes.values()).reverse();
     for (const node of nodeArray) {
-      // 1. Direct bud / joint circle hit test
       const dx = worldX - node.currentX;
       const dy = worldY - node.currentY;
       const dist = Math.sqrt(dx * dx + dy * dy);
@@ -662,35 +773,32 @@ export class TreeRenderer {
         return node.id;
       }
 
-      // 2. Pill label tag bounds hit test
-      const hoursText = node.totalMinutes > 0
-        ? node.totalMinutes >= 60
-          ? `${(node.totalMinutes / 60).toFixed(1)}h`
-          : `${node.totalMinutes}m`
-        : null;
+      const { totalPillWidth, pillHeight } = this.calculatePillLayout(
+        this.ctx,
+        node.title,
+        node.totalMinutes,
+        this.selectedTaskId === node.id
+      );
 
-      const approxTextWidth = node.title.length * 8.5;
-      const totalPillWidth = Math.max(70, approxTextWidth + (hoursText ? 45 : 22));
-      const pillHeight = 24;
-
+      const radius = (this.selectedTaskId === node.id ? 10 : 6) * node.sproutProgress;
       let pillX = 0;
-      let pillY = -26;
+      let pillY = -24;
 
       if (node.labelPlacement === 'bottom') {
-        pillY = 14;
+        pillY = 16;
         pillX = -totalPillWidth / 2;
       } else if (node.labelPlacement === 'left') {
-        pillX = -totalPillWidth - 10;
+        pillX = -totalPillWidth - radius - 6;
         pillY = -pillHeight / 2;
       } else if (node.labelPlacement === 'right') {
-        pillX = 10;
+        pillX = radius + 6;
         pillY = -pillHeight / 2;
       } else {
+        // 'top'
         pillX = -totalPillWidth / 2;
-        pillY = -28;
+        pillY = -26;
       }
 
-      // Check if click was inside label pill
       if (
         dx >= pillX &&
         dx <= pillX + totalPillWidth &&
@@ -707,9 +815,5 @@ export class TreeRenderer {
     const node = this.nodes.get(taskId);
     if (!node) return null;
     return { x: node.currentX, y: node.currentY };
-  }
-
-  public getNodes(): RenderNode[] {
-    return Array.from(this.nodes.values());
   }
 }

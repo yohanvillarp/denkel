@@ -9,6 +9,9 @@ interface TaskContextType {
   setSelectedTaskId: (id: string | null) => void;
   selectedTask: TaskNode | null;
   addTask: (title: string, parentId?: string | null, type?: NodeType) => Promise<TaskNode>;
+  createCategory: (title: string, parentId?: string | null) => Promise<TaskNode>;
+  promoteToCategory: (categoryTitle: string, taskIds: string[], parentId?: string | null) => Promise<TaskNode>;
+  convertTaskType: (taskId: string, type: NodeType) => Promise<void>;
   updateTask: (task: TaskNode) => Promise<void>;
   updateTaskStatus: (taskId: string, status: TaskStatus) => Promise<void>;
   logTime: (taskId: string, durationMinutes: number, note?: string) => Promise<void>;
@@ -77,11 +80,11 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const newTask: TaskNode = {
-      id: `task_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      id: `${type === 'category' ? 'cat' : 'task'}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
       title: trimmedTitle,
       type,
       parentId,
-      status: 'pending',
+      status: type === 'category' ? 'in_progress' : 'pending',
       directMinutes: 0,
       sessionHistory: [],
       isProvisional: !parentId,
@@ -93,6 +96,68 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setTasks(updated);
     await storageAdapter.saveTasks(updated);
     return newTask;
+  }, [tasks]);
+
+  const createCategory = useCallback(async (
+    title: string,
+    parentId: string | null = null
+  ): Promise<TaskNode> => {
+    return addTask(title, parentId, 'category');
+  }, [addTask]);
+
+  const promoteToCategory = useCallback(async (
+    categoryTitle: string,
+    taskIds: string[],
+    parentId: string | null = null
+  ): Promise<TaskNode> => {
+    const trimmed = categoryTitle.trim();
+    if (!trimmed) throw new Error('Category title cannot be empty');
+
+    const newCategory: TaskNode = {
+      id: `cat_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      title: trimmed,
+      type: 'category',
+      parentId,
+      status: 'in_progress',
+      directMinutes: 0,
+      sessionHistory: [],
+      isProvisional: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    const taskIdSet = new Set(taskIds);
+    const updatedTasks = tasks.map(t => {
+      if (taskIdSet.has(t.id)) {
+        return {
+          ...t,
+          parentId: newCategory.id,
+          isProvisional: false,
+          updatedAt: new Date().toISOString()
+        };
+      }
+      return t;
+    });
+
+    const finalTasks = [...updatedTasks, newCategory];
+    setTasks(finalTasks);
+    await storageAdapter.saveTasks(finalTasks);
+    return newCategory;
+  }, [tasks]);
+
+  const convertTaskType = useCallback(async (taskId: string, type: NodeType) => {
+    const updated = tasks.map(t => {
+      if (t.id === taskId) {
+        return {
+          ...t,
+          type,
+          updatedAt: new Date().toISOString()
+        };
+      }
+      return t;
+    });
+    setTasks(updated);
+    await storageAdapter.saveTasks(updated);
   }, [tasks]);
 
   const updateTask = useCallback(async (updatedNode: TaskNode) => {
@@ -208,6 +273,9 @@ export const TaskProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSelectedTaskId,
         selectedTask,
         addTask,
+        createCategory,
+        promoteToCategory,
+        convertTaskType,
         updateTask,
         updateTaskStatus,
         logTime,
