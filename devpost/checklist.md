@@ -62,22 +62,27 @@ Build mode: learn
 ## Hands-on Checkpoints
 
 - [x] Early usable behavior explored — Slice 2 (living tree with effort logging and branch growth)
-- [ ] Final kick-the-tires exploration and feedback completed
+- [x] Final kick-the-tires exploration and feedback completed
 
 ## Final Review
 
-- [ ] Final review complete — feedback resolved and learner confirms ready to ship
+- [x] Final review complete — feedback resolved and learner confirms ready to ship
 
 ## Code Tour and App Map
 
-- [ ] Learning activity complete — guided route, focused alternative, prior practice connected, or brief recap
-- [ ] Optional edit and transfer reflection addressed — offered/declined/already covered/not applicable as appropriate
-- [ ] `devpost/app-map.html` generated from finished code, checked, and shown, including a project-grounded practice to reuse
+- [x] Learning activity complete — guided route, focused alternative, prior practice connected, or brief recap
+- [x] Optional edit and transfer reflection addressed — offered/declined/already covered/not applicable as appropriate
+- [x] `devpost/app-map.html` generated from finished code, checked, and shown, including a project-grounded practice to reuse
 
-Activity and evidence: [what actually happened; real document/test/code references; unfinished work if interrupted]
-Route and stops: [actual paths and symbols; guided stops completed, or reference-only route]
-Edit outcome: [tried/kept/reverted/declined/not applicable; verification if changed]
-Reflection: [offered/answered/declined/already covered — personal answer belongs only in the ignored profile]
-Activity mode: [live app and editor, explicit static fallback, focused alternative, prior practice, or recap]
+Activity and evidence: Focused alternative connecting camera projection geometry and tree acyclicity guard to observable runtime stability. Replaced hardcoded drawer offset assumptions with viewport projection invariant `panX = targetScreenX - targetWorldX * zoom`, verified via `scripts/verify_slice5.mjs` and interactive testing.
+Route and stops: 1. `src/components/TaskInputBar.tsx` (ingestion/AI dispatch); 2. `src/tree/D3TreeLayoutEngine.ts` (acyclic hierarchy & layout); 3. `src/tree/TreeRenderer.ts` & `src/tree/CameraController.ts` (effort-thickening & visible canvas projection).
+Edit outcome: Kept verified camera framing centering and beacon visual enhancements; verified by `npm run build` and interactive user testing.
+Reflection: Focused on methodical planning preventing design thrash; reusable takeaway documented in `devpost/app-map.html`.
+Activity mode: Live app and editor with interactive verification and standalone `devpost/app-map.html`.
 
 ## Revisions
+
+- **AI Reorganization Entry Point:** Moved the "Reorganize with AI" button from a static header placement to an intentional, contextual banner directly above the input bar that appears only when unreviewed tasks or structural changes exist.
+- **Task Lifecycle Status & Effort Decoupling:** Restricted the "Pending Bud" state so that once time is logged, tasks automatically transition to "In Progress", and returning to "Pending Bud" is only permissible if accumulated time is corrected to zero.
+- **Guided Camera Navigation & Visible Area Projection:** Replaced horizontal bias with dynamic visible viewport projection (`targetScreenX = (screenWidth - drawerWidth) / 2`) and balanced cluster centering (55% category joint, 45% cluster center) to prevent category joints from ending up at outer screen edges.
+

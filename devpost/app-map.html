@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Denkel — Proof of Concept App Map</title>
+  <style>
+    :root {
+      --bg: #fbfcf9;
+      --card-bg: #ffffff;
+      --card-border: #e3ece4;
+      --text: #14231b;
+      --text-muted: #526358;
+      --emerald-primary: #105b38;
+      --emerald-dark: #064e3b;
+      --emerald-light: #eaf5ee;
+      --emerald-accent: #10b981;
+      --amber-bud: #d97706;
+      --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      line-height: 1.6;
+      padding: 2.5rem 1.25rem;
+      max-width: 860px;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 2.5rem;
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 1.5rem;
+    }
+
+    .badge {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: var(--emerald-light);
+      color: var(--emerald-primary);
+      padding: 0.25rem 0.6rem;
+      border-radius: 9999px;
+      border: 1px solid #cce3d2;
+      margin-bottom: 0.75rem;
+    }
+
+    h1 {
+      font-size: 2rem;
+      color: var(--emerald-dark);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.5rem;
+    }
+
+    p.lead {
+      font-size: 1.05rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    section {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      margin-bottom: 1.75rem;
+      box-shadow: 0 1px 3px rgba(6, 78, 59, 0.04);
+    }
+
+    h2 {
+      font-size: 1.25rem;
+      color: var(--emerald-dark);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    h3 {
+      font-size: 1rem;
+      color: var(--text);
+      margin-top: 1.25rem;
+      margin-bottom: 0.5rem;
+    }
+
+    p {
+      margin-bottom: 1rem;
+      color: var(--text);
+    }
+
+    ul, ol {
+      margin-left: 1.25rem;
+      margin-bottom: 1rem;
+      color: var(--text);
+    }
+
+    li {
+      margin-bottom: 0.4rem;
+    }
+
+    code {
+      font-family: var(--font-mono);
+      font-size: 0.85em;
+      background: #f1f6f2;
+      color: var(--emerald-dark);
+      padding: 0.15rem 0.4rem;
+      border-radius: 0.3rem;
+      border: 1px solid #dde7df;
+    }
+
+    pre {
+      background: #f4f8f5;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      overflow-x: auto;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      border: 1px solid var(--card-border);
+      margin-bottom: 1rem;
+      color: var(--text);
+    }
+
+    /* SVG Architecture Diagram */
+    .diagram-container {
+      margin: 1.5rem 0;
+      background: #f8faf8;
+      border: 1px solid var(--card-border);
+      border-radius: 0.75rem;
+      padding: 1rem;
+      overflow-x: auto;
+    }
+
+    svg {
+      display: block;
+      margin: 0 auto;
+      max-width: 100%;
+      height: auto;
+    }
+
+    /* Route cards */
+    .route-stop {
+      border-left: 3px solid var(--emerald-accent);
+      padding-left: 1rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .route-stop-title {
+      font-weight: 600;
+      color: var(--emerald-dark);
+      margin-bottom: 0.25rem;
+      font-size: 0.95rem;
+    }
+
+    .route-stop-path {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 0.4rem;
+    }
+
+    /* Pointers Grid */
+    .pointers-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    @media (min-width: 640px) {
+      .pointers-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    .pointer-card {
+      background: #fafbfa;
+      border: 1px solid var(--card-border);
+      border-radius: 0.5rem;
+      padding: 1rem;
+    }
+
+    .pointer-card strong {
+      display: block;
+      font-size: 0.9rem;
+      color: var(--emerald-dark);
+      margin-bottom: 0.35rem;
+    }
+
+    .pointer-card span {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      display: block;
+      line-height: 1.4;
+    }
+
+    details {
+      margin-top: 0.75rem;
+      border: 1px solid #e1ebe2;
+      border-radius: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      background: #ffffff;
+    }
+
+    summary {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--emerald-primary);
+      cursor: pointer;
+    }
+
+    details[open] summary {
+      margin-bottom: 0.5rem;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 3rem;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="badge">Proof of Concept Map</div>
+    <h1>Denkel — App Map</h1>
+    <p class="lead">
+      A living, organic botanical task manager where effort becomes tangible growth. Tasks are branches, subtasks are leaves, and recorded hours nurture and thicken the tree.
+    </p>
+  </header>
+
+  <!-- 1. Purpose and Architecture -->
+  <section>
+    <h2>1. Overview & Core Architecture</h2>
+    <p>
+      Denkel turns abstract to-do lists into an evolving botanical tree rendered on an interactive HTML5 canvas. The architecture is cleanly divided into four reactive layers:
+    </p>
+    <ul>
+      <li><strong>Natural Language Input:</strong> Submits free-form tasks, triggering intelligent categorization or graceful local fallbacks.</li>
+      <li><strong>Integrity Guard & Engine:</strong> Guarantees graph acyclicity, preserves accumulated time, and calculates natural collision-free coordinates via <code>d3-hierarchy</code>.</li>
+      <li><strong>Organic Canvas Renderer:</strong> Translates coordinates into curved botanical branches, tapered trunks, effort-thickened stems, and level-of-detail tags.</li>
+      <li><strong>Guided Camera & Drawer:</strong> Glides the viewport smoothly across the canvas to highlight branches while synchronizing with the details drawer.</li>
+    </ul>
+
+    <!-- Architecture Diagram -->
+    <div class="diagram-container">
+      <svg viewBox="0 0 760 210" width="760" height="210" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1 L 8 5 L 0 9 z" fill="#105b38"/>
+          </marker>
+        </defs>
+
+        <!-- Step 1: Input -->
+        <rect x="15" y="65" width="165" height="80" rx="10" fill="#ffffff" stroke="#cce0d2" stroke-width="2"/>
+        <text x="97" y="95" font-family="system-ui" font-size="12" font-weight="bold" fill="#064e3b" text-anchor="middle">1. User Ingestion</text>
+        <text x="97" y="115" font-family="monospace" font-size="10" fill="#526358" text-anchor="middle">TaskInputBar.tsx</text>
+        <text x="97" y="130" font-family="system-ui" font-size="9" fill="#718579" text-anchor="middle">Natural language / AI</text>
+
+        <!-- Line 1 -> 2 -->
+        <line x1="180" y1="105" x2="210" y2="105" stroke="#105b38" stroke-width="2" marker-end="url(#arrow)"/>
+
+        <!-- Step 2: Guard & Engine -->
+        <rect x="215" y="65" width="165" height="80" rx="10" fill="#ffffff" stroke="#cce0d2" stroke-width="2"/>
+        <text x="297" y="95" font-family="system-ui" font-size="12" font-weight="bold" fill="#064e3b" text-anchor="middle">2. Integrity & Layout</text>
+        <text x="297" y="115" font-family="monospace" font-size="10" fill="#526358" text-anchor="middle">TreeIntegrityGuard</text>
+        <text x="297" y="130" font-family="system-ui" font-size="9" fill="#718579" text-anchor="middle">D3TreeLayoutEngine</text>
+
+        <!-- Line 2 -> 3 -->
+        <line x1="380" y1="105" x2="410" y2="105" stroke="#105b38" stroke-width="2" marker-end="url(#arrow)"/>
+
+        <!-- Step 3: Storage -->
+        <rect x="415" y="65" width="150" height="80" rx="10" fill="#ffffff" stroke="#cce0d2" stroke-width="2"/>
+        <text x="490" y="95" font-family="system-ui" font-size="12" font-weight="bold" fill="#064e3b" text-anchor="middle">3. Persistence</text>
+        <text x="490" y="115" font-family="monospace" font-size="10" fill="#526358" text-anchor="middle">LocalStorageAdapter</text>
+        <text x="490" y="130" font-family="system-ui" font-size="9" fill="#718579" text-anchor="middle">Autosave & Timers</text>
+
+        <!-- Line 3 -> 4 -->
+        <line x1="565" y1="105" x2="595" y2="105" stroke="#105b38" stroke-width="2" marker-end="url(#arrow)"/>
+
+        <!-- Step 4: Canvas -->
+        <rect x="600" y="65" width="145" height="80" rx="10" fill="#ffffff" stroke="#10b981" stroke-width="2"/>
+        <text x="672" y="95" font-family="system-ui" font-size="12" font-weight="bold" fill="#064e3b" text-anchor="middle">4. Visual Canvas</text>
+        <text x="672" y="115" font-family="monospace" font-size="10" fill="#526358" text-anchor="middle">TreeRenderer.ts</text>
+        <text x="672" y="130" font-family="system-ui" font-size="9" fill="#10b981" text-anchor="middle">Canvas + Camera</text>
+      </svg>
+    </div>
+  </section>
+
+  <!-- 2. Code Route -->
+  <section>
+    <h2>2. Reference Code Route</h2>
+    <p>
+      To follow a task from submission to visual life on canvas, follow these three stable code anchors:
+    </p>
+
+    <div class="route-stop">
+      <div class="route-stop-title">Stop 1: Task Ingestion & AI Routing</div>
+      <div class="route-stop-path">src/components/TaskInputBar.tsx → handleSubmit()</div>
+      <p>
+        Captures the user prompt, sends it to the AI orchestrator or local fallback provider, and invokes <code>addTask()</code> with parent references.
+      </p>
+    </div>
+
+    <div class="route-stop">
+      <div class="route-stop-title">Stop 2: Acyclic Graph Mutation & Layout Engine</div>
+      <div class="route-stop-path">src/tree/D3TreeLayoutEngine.ts → calculateLayout()</div>
+      <p>
+        Translates parent-child relationships into natural branch angles and radial lengths. Resolves label collisions dynamically and staggers branch emergence.
+      </p>
+    </div>
+
+    <div class="route-stop">
+      <div class="route-stop-title">Stop 3: Effort-Thickened Branch Rendering & Camera Flight</div>
+      <div class="route-stop-path">src/tree/TreeRenderer.ts → renderBranches() / renderNodes()</div>
+      <p>
+        Scales branch thickness logarithmically based on accumulated minutes:
+        <code>branchWidth = baseThickness + Math.min(2.5, Math.log1p(node.totalMinutes) * 0.45)</code>.
+        Differentiates categories from tasks with radiant beacons.
+      </p>
+    </div>
+  </section>
+
+  <!-- 3. Where to change what -->
+  <section>
+    <h2>3. To Change This, Start Here</h2>
+    <div class="pointers-grid">
+      <div class="pointer-card">
+        <strong>Tree Palette & Aesthetics</strong>
+        <span>Edit color constants in <code>src/tree/TreeRenderer.ts</code> (lines 53–64) to modify bark, leaves, or bud tones.</span>
+      </div>
+
+      <div class="pointer-card">
+        <strong>Branch Emergence Angles</strong>
+        <span>Edit <code>PRIMARY_SLOTS</code> in <code>src/tree/D3TreeLayoutEngine.ts</code> (lines 22–41) to adjust radial reach and canopy shapes.</span>
+      </div>
+
+      <div class="pointer-card">
+        <strong>Camera Zoom & Pan Easing</strong>
+        <span>Modify <code>CameraController.flyTo()</code> and <code>smoothZoom()</code> in <code>src/tree/CameraController.ts</code>.</span>
+      </div>
+
+      <div class="pointer-card">
+        <strong>AI Prompting & Taxonomy Schema</strong>
+        <span>Tune system prompt instructions and restructuring criteria in <code>src/services/ai/GeminiProvider.ts</code>.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. Reusable Practice -->
+  <section>
+    <h2>4. A Practice to Reuse</h2>
+    <p>
+      <strong>Visible Canvas Projection Geometry:</strong>
+      When building applications with persistent side drawers (e.g. inspector panels, task drawers), avoid brittle hardcoded horizontal pixel offsets to center camera targets.
+    </p>
+    <p>
+      Instead, derive the target screen point from the actual visible viewport:
+      <code>targetScreenX = (screenWidth - drawerWidth) / 2</code>, and compute the camera pan using the projection invariant:
+    </p>
+    <pre>panX = targetScreenX - targetWorldX * zoom;</pre>
+    <p>
+      This single invariant guarantees pixel-perfect centering across all screen sizes, device pixel ratios, drawer states, and zoom scales.
+    </p>
+  </section>
+
+  <!-- 5. How to Run -->
+  <section>
+    <h2>5. Running the Project</h2>
+    <p>To launch the local development server:</p>
+    <pre>npm run dev</pre>
+    <p>To run automated verification checks:</p>
+    <pre>node scripts/verify_slice5.mjs</pre>
+    <p>To build for production:</p>
+    <pre>npm run build</pre>
+  </section>
+
+  <footer>
+    Snapshot generated from commit <code>969c13b</code> · Devpost Learn Build With AI: Basics
+  </footer>
+
+</body>
+</html>
