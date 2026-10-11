@@ -34,7 +34,8 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({ onStartTimer }) => {
     selectedTask,
     updateTaskStatus,
     logTime,
-    updateSessionNote,
+    updateSession,
+    deleteSession,
     deleteTask,
     reparentTask,
     convertTaskType,
@@ -50,6 +51,7 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({ onStartTimer }) => {
   // Inline editing state for past sessions
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editingNoteText, setEditingNoteText] = useState<string>('');
+  const [editingDurationMins, setEditingDurationMins] = useState<string>('30');
 
   // Sub-branch quick creation state
   const [isAddingSubBranch, setIsAddingSubBranch] = useState(false);
@@ -72,6 +74,7 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({ onStartTimer }) => {
 
   const isCategory = selectedTask.type === 'category';
   const isBloomed = selectedTask.status === 'completed';
+  const hasAccumulatedEffort = (selectedTask.directMinutes || 0) > 0 || (selectedTask.sessionHistory || []).some(s => s.durationMinutes > 0);
 
   // Compute breadcrumb path
   const getBreadcrumbPath = (): string => {
@@ -228,6 +231,14 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({ onStartTimer }) => {
       <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
         {/* Title & Type Specific Headers */}
         <div>
+          {selectedTask.isProvisional && (
+            <div className="mb-2.5">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-900 border border-amber-200/80">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                <span>Provisional Branch • Planted in offline mode</span>
+              </span>
+            </div>
+          )}
           {isCategory ? (
             <div className="flex items-center gap-2 mb-2">
               <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-mono uppercase tracking-wider font-semibold bg-emerald-100/80 text-[#105b38] border border-emerald-300/80">
@@ -238,17 +249,27 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({ onStartTimer }) => {
           ) : (
             <div className="flex items-center gap-2 mb-2.5">
               <button
-                onClick={() => handleStatusChange('pending')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
-                  selectedTask.status === 'pending'
-                    ? 'bg-amber-100/90 text-amber-900 border border-amber-300/80 shadow-sm'
-                    : 'bg-[#f4f7f4] text-[#526358] hover:bg-[#edf2ee]'
+                type="button"
+                disabled={hasAccumulatedEffort}
+                onClick={() => !hasAccumulatedEffort && handleStatusChange('pending')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                  hasAccumulatedEffort
+                    ? 'opacity-40 cursor-not-allowed bg-[#f4f7f4] text-[#8a9e92]'
+                    : selectedTask.status === 'pending'
+                    ? 'bg-amber-100/90 text-amber-900 border border-amber-300/80 shadow-sm cursor-pointer'
+                    : 'bg-[#f4f7f4] text-[#526358] hover:bg-[#edf2ee] cursor-pointer'
                 }`}
+                title={
+                  hasAccumulatedEffort
+                    ? 'Pending Bud is unavailable while task has recorded work time'
+                    : 'Mark as Pending Bud (unstarted)'
+                }
               >
-                <Sprout className="w-3.5 h-3.5 text-amber-700" />
+                <Sprout className={`w-3.5 h-3.5 ${hasAccumulatedEffort ? 'text-[#8a9e92]' : 'text-amber-700'}`} />
                 <span>Pending Bud</span>
               </button>
               <button
+                type="button"
                 onClick={() => handleStatusChange('in_progress')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
                   selectedTask.status === 'in_progress'
@@ -260,6 +281,7 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({ onStartTimer }) => {
                 <span>In Progress</span>
               </button>
               <button
+                type="button"
                 onClick={() => handleStatusChange('completed')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
                   selectedTask.status === 'completed'
@@ -691,82 +713,136 @@ export const TaskDrawer: React.FC<TaskDrawerProps> = ({ onStartTimer }) => {
                   return (
                     <div
                       key={session.id}
-                      className="p-2.5 rounded-xl bg-white border border-[#e8efe9] space-y-1.5 transition-all text-xs shadow-2xs"
+                      className="p-2.5 rounded-xl bg-white border border-[#e8efe9] space-y-1.5 transition-all text-xs shadow-2xs group/session"
                     >
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-start gap-2 flex-1 mr-2">
-                          <Calendar className="w-3.5 h-3.5 text-[#105b38] shrink-0 mt-0.5" />
-                          <div className="flex-1">
-                            {isEditing ? (
-                              <div className="flex items-center gap-1.5 mt-0.5">
-                                <input
-                                  type="text"
-                                  value={editingNoteText}
-                                  onChange={(e) => setEditingNoteText(e.target.value)}
-                                  className="w-full px-2 py-0.5 bg-[#fbfcf9] border border-[#cde0d2] rounded text-xs text-[#14231b] focus:outline-none focus:border-[#105b38]"
-                                  autoFocus
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                      updateSessionNote(selectedTask.id, session.id, editingNoteText);
-                                      setEditingSessionId(null);
-                                    } else if (e.key === 'Escape') {
-                                      setEditingSessionId(null);
-                                    }
-                                  }}
-                                />
-                                <button
-                                  onClick={() => {
-                                    updateSessionNote(selectedTask.id, session.id, editingNoteText);
+                      {isEditing ? (
+                        <div className="space-y-2 p-1">
+                          <div className="flex gap-2">
+                            <div className="flex-1">
+                              <label className="text-[10px] text-[#63776a] font-mono uppercase block mb-0.5">Note</label>
+                              <input
+                                type="text"
+                                value={editingNoteText}
+                                onChange={(e) => setEditingNoteText(e.target.value)}
+                                placeholder="Session note"
+                                className="w-full px-2 py-1 bg-white border border-[#cde0d2] rounded text-xs text-[#14231b] focus:outline-none focus:border-[#105b38]"
+                                autoFocus
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    updateSession(selectedTask.id, session.id, parseInt(editingDurationMins, 10) || 0, editingNoteText);
                                     setEditingSessionId(null);
-                                  }}
-                                  className="p-1 bg-[#105b38] text-white rounded hover:bg-[#0c482c] cursor-pointer"
-                                  title="Save"
-                                >
-                                  <Check className="w-3 h-3" />
-                                </button>
-                                <button
-                                  onClick={() => setEditingSessionId(null)}
-                                  className="p-1 text-[#526358] hover:text-[#14231b] cursor-pointer"
-                                  title="Cancel"
-                                >
-                                  <X className="w-3 h-3" />
-                                </button>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-1.5 group/note">
-                                <span className="font-medium text-[#14231b]">
-                                  {defaultTitle}
-                                </span>
-                                {!isCategory && (
-                                  <button
-                                    onClick={() => {
-                                      setEditingSessionId(session.id);
-                                      setEditingNoteText(session.note || defaultTitle);
-                                    }}
-                                    className="opacity-0 group-hover/note:opacity-100 text-[#718579] hover:text-[#105b38] p-0.5 transition-opacity cursor-pointer"
-                                    title="Edit session description"
-                                  >
-                                    <Pencil className="w-2.5 h-2.5" />
-                                  </button>
-                                )}
-                              </div>
-                            )}
-
-                            <div className="text-[10px] text-[#718579] font-mono mt-0.5">
-                              {new Date(session.startTime).toLocaleDateString(undefined, {
-                                month: 'short',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
+                                  } else if (e.key === 'Escape') {
+                                    setEditingSessionId(null);
+                                  }
+                                }}
+                              />
+                            </div>
+                            <div className="w-20">
+                              <label className="text-[10px] text-[#63776a] font-mono uppercase block mb-0.5">Mins</label>
+                              <input
+                                type="number"
+                                min="0"
+                                max="1440"
+                                value={editingDurationMins}
+                                onChange={(e) => setEditingDurationMins(e.target.value)}
+                                className="w-full px-2 py-1 bg-white border border-[#cde0d2] rounded text-xs font-mono text-[#14231b] focus:outline-none focus:border-[#105b38]"
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    updateSession(selectedTask.id, session.id, parseInt(editingDurationMins, 10) || 0, editingNoteText);
+                                    setEditingSessionId(null);
+                                  } else if (e.key === 'Escape') {
+                                    setEditingSessionId(null);
+                                  }
+                                }}
+                              />
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between pt-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                deleteSession(selectedTask.id, session.id);
+                                setEditingSessionId(null);
+                              }}
+                              className="flex items-center gap-1 text-[11px] text-rose-600 hover:text-rose-700 cursor-pointer"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              <span>Delete Session</span>
+                            </button>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => setEditingSessionId(null)}
+                                className="px-2 py-0.5 text-xs text-[#526358] hover:text-[#14231b] cursor-pointer"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  updateSession(selectedTask.id, session.id, parseInt(editingDurationMins, 10) || 0, editingNoteText);
+                                  setEditingSessionId(null);
+                                }}
+                                className="flex items-center gap-1 px-2.5 py-1 bg-[#105b38] text-white rounded text-xs font-medium hover:bg-[#0c482c] cursor-pointer shadow-xs"
+                              >
+                                <Check className="w-3 h-3" />
+                                <span>Save</span>
+                              </button>
                             </div>
                           </div>
                         </div>
+                      ) : (
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-start gap-2 flex-1 mr-2">
+                            <Calendar className="w-3.5 h-3.5 text-[#105b38] shrink-0 mt-0.5" />
+                            <div className="flex-1">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-medium text-[#14231b]">
+                                  {defaultTitle}
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-[#718579] font-mono mt-0.5">
+                                {new Date(session.startTime).toLocaleDateString(undefined, {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </div>
+                            </div>
+                          </div>
 
-                        <span className="font-mono font-medium text-[#105b38] shrink-0">
-                          +{formatDuration(session.durationMinutes)}
-                        </span>
-                      </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="font-mono font-medium text-[#105b38]">
+                              +{formatDuration(session.durationMinutes)}
+                            </span>
+                            {!isCategory && (
+                              <div className="flex items-center gap-0.5">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditingSessionId(session.id);
+                                    setEditingNoteText(session.note || defaultTitle);
+                                    setEditingDurationMins(String(session.durationMinutes));
+                                  }}
+                                  className="text-[#718579] hover:text-[#105b38] p-1 rounded hover:bg-[#edf4ee] transition-colors cursor-pointer"
+                                  title="Edit session note or minutes"
+                                >
+                                  <Pencil className="w-3 h-3" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => deleteSession(selectedTask.id, session.id)}
+                                  className="text-[#718579] hover:text-rose-600 p-1 rounded hover:bg-rose-50 transition-colors cursor-pointer"
+                                  title="Delete session record"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}

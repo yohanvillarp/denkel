@@ -39,7 +39,7 @@ Build mode: learn
   Learner check: Reparent a task under a new or existing category, watching the tree smoothly reconfigure its branches and glide them to their new positions without overlapping or losing data.
   Commit: `Implement tree restructuring, category promotion, and animated layout transitions`
 
-- [ ] **4. AI semantic categorization and safe tree reorganization**
+- [x] **4. AI semantic categorization and safe tree reorganization**
   Becomes usable: Typing natural language tasks automatically categorizes them or reparents related branches using Google Gemini Flash-Lite via a secure local proxy, while the client-side Tree Integrity Guard guarantees no cycles, missing parents, or lost time by driving the validated restructuring engine from Slice 3. Unrelated tasks become clean top-level branches, and offline/keyless environments fall back safely.
   Why now: Now that the underlying tree mutations and animations are proven, the AI can safely drive them via structured JSON without mixing AI interpretation errors with layout engine bugs.
   PRD ref: `prd.md > The Core Journey` (step 3), `prd.md > Natural Language Task Ingestion & AI Restructuring`

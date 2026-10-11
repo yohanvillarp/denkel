@@ -7,6 +7,8 @@ const TIMER_STORAGE_KEY = 'denkel_active_timer_v1';
 const CAMERA_SESSION_KEY = 'denkel_camera_session_v1';
 const SELECTED_TASK_SESSION_KEY = 'denkel_selected_task_session_v1';
 
+const FINGERPRINT_STORAGE_KEY = 'denkel_reviewed_fingerprint_v1';
+
 export class LocalStorageAdapter implements IStorageAdapter {
   async getTasks(): Promise<TaskNode[]> {
     try {
@@ -104,10 +106,32 @@ export class LocalStorageAdapter implements IStorageAdapter {
     }
   }
 
+  async getLastReviewedFingerprint(): Promise<string | null> {
+    try {
+      return localStorage.getItem(FINGERPRINT_STORAGE_KEY);
+    } catch (err) {
+      console.error('[LocalStorageAdapter] Failed to load reviewed fingerprint:', err);
+      return null;
+    }
+  }
+
+  async saveLastReviewedFingerprint(fingerprint: string | null): Promise<void> {
+    try {
+      if (!fingerprint) {
+        localStorage.removeItem(FINGERPRINT_STORAGE_KEY);
+      } else {
+        localStorage.setItem(FINGERPRINT_STORAGE_KEY, fingerprint);
+      }
+    } catch (err) {
+      console.error('[LocalStorageAdapter] Failed to save reviewed fingerprint:', err);
+    }
+  }
+
   async clear(): Promise<void> {
     try {
       localStorage.removeItem(TASKS_STORAGE_KEY);
       localStorage.removeItem(TIMER_STORAGE_KEY);
+      localStorage.removeItem(FINGERPRINT_STORAGE_KEY);
       sessionStorage.removeItem(CAMERA_SESSION_KEY);
       sessionStorage.removeItem(SELECTED_TASK_SESSION_KEY);
     } catch (err) {

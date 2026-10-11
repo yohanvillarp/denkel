@@ -22,7 +22,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSearch }) => {
       <div className="flex items-center gap-2">
         <button
           onClick={onOpenSearch}
-          className="flex items-center gap-2 px-3 py-1 rounded-full text-[#526358] hover:text-[#14231b] hover:bg-[#edf4ee] transition-colors border border-transparent hover:border-[#dde7de] text-xs"
+          className="flex items-center gap-2 px-3 py-1 rounded-full text-[#526358] hover:text-[#14231b] hover:bg-[#edf4ee] transition-colors border border-transparent hover:border-[#dde7de] text-xs cursor-pointer"
           title="Search Tasks"
         >
           <Search className="w-3.5 h-3.5 opacity-70" />

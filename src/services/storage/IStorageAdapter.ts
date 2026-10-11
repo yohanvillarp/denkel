@@ -10,5 +10,7 @@ export interface IStorageAdapter {
   saveCameraState(state: CameraState | null): Promise<void>;
   getSelectedTaskId(): Promise<string | null>;
   saveSelectedTaskId(taskId: string | null): Promise<void>;
+  getLastReviewedFingerprint(): Promise<string | null>;
+  saveLastReviewedFingerprint(fingerprint: string | null): Promise<void>;
   clear(): Promise<void>;
 }
