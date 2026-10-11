@@ -12,7 +12,7 @@ Instead of traditional to-do lists where completed items simply disappear into a
 - **Living Canvas Visualization:** An interactive HTML5 Canvas with smooth continuous cursor-anchored zoom, responsive drag panning, and natural tapered wood grain.
 - **Effort-Driven Growth:** Accumulating work sessions visibly thickens branch stems logarithmically (`Math.log1p(minutes)`). Track sessions using the fullscreen distraction-free focus timer (with circular sweep and autosave) or log hours manually.
 - **Dynamic Organic Hierarchy:** Powered by `d3-hierarchy`, branches emerge naturally along primary trunk slots and fan out with collision-free label placements. Sub-branches and parent categories transition smoothly with migration tweening.
-- **AI Semantic Categorization & Restructuring:** Natural language task inputs are intelligently categorized using **Google Gemini 2.5 Flash-Lite**. Contextual reorganization recognizes cross-stream relationships and corrects miscategorized branches.
+- **AI Semantic Categorization & Restructuring:** Natural language task inputs are intelligently categorized using **Google Gemini Flash-Lite** (`gemini-3.5-flash-lite`, with fallback to `gemini-2.5-flash`). Contextual reorganization recognizes cross-stream relationships and corrects miscategorized branches.
 - **Tree Integrity Guard:** A client-side guard verifies acyclicity, parent validity, and preserves all historical time logs before applying any structural mutations.
 - **Offline & Keyless Fallback:** Operates seamlessly offline. If no Gemini API key is configured or network fails, a deterministic local fallback creates clean top-level branches without interruption.
 - **Guided Camera Flight & Adaptive Level of Detail (LOD):** Quick floating search modal (`/` or `Ctrl+K` / `⌘K`) with smooth cubic Bézier flight navigation (`flyTo`). Viewport-aware projection frames categories and tasks inside the visible canvas (excluding the drawer), while adaptive LOD collapses labels into clean branch tips when zoomed out.
@@ -21,10 +21,10 @@ Instead of traditional to-do lists where completed items simply disappear into a
 
 ## 🛠️ Tech Stack
 
-- **Core & UI:** React 18, TypeScript, Tailwind CSS
+- **Core & UI:** React 18 (`react@18.3.1`), TypeScript, Tailwind CSS
 - **Visualization:** Custom 2D Canvas rendering engine with `d3-hierarchy` coordinate layout
 - **Icons & Design:** Lucide React, Plus Jakarta Sans, JetBrains Mono, Inter
-- **AI Engine:** Google Gemini 2.5 Flash-Lite via Vite server middleware proxy (`server/api.ts`)
+- **AI Engine:** Google Gemini Flash-Lite (`gemini-3.5-flash-lite` / `gemini-2.5-flash`) via Vite server middleware proxy (`server/api.ts`)
 - **Build Tooling:** Vite 6, PostCSS, Autoprefixer
 
 ---
